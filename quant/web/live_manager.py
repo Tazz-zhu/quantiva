@@ -171,6 +171,7 @@ class LiveManager:
                 self.provider = ExchangeDataFetcher(
                     self.cfg["exchange"]["id"],
                     self.cfg["exchange"].get("sandbox", False),
+                    proxy=exchange_proxy(self.cfg),
                 )
 
             self.events.clear()

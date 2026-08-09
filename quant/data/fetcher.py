@@ -107,7 +107,8 @@ class ExchangeDataFetcher:
         elif days is not None:
             since = max(since, now_ms - int(days) * 86_400_000)
 
-        page_limit = 1000
+        # OKX 等交易所单页最多返回 300 根；用 300 作为分页步长可兼容多数交易所
+        page_limit = 300
         cursor = int(since)
         frames: list[pd.DataFrame] = []
         for _ in range(max_pages):

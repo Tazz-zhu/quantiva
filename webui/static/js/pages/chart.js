@@ -1,9 +1,20 @@
 ﻿/* ============ 行情图表 ============ */
 App.register("chart", (() => {
   const state = {
-    symbol: "BTC/USDT", timeframe: "1h", source: "synthetic", limit: 500,
-    showMA: true, showBOLL: true, showRSI: true, showMACD: true, showMarkers: false, auto: false, data: null,
+    symbol: "BTC/USDT", timeframe: "1h", source: "auto", limit: 500,
+    showMA: true, showBOLL: true, showRSI: true, showMACD: true, showMarkers: false, auto: true, data: null,
   };
+  // 记住上次的图表偏好
+  try {
+    const saved = JSON.parse(localStorage.getItem("quantx_chart_prefs") || "{}");
+    if (saved.symbol) state.symbol = saved.symbol;
+    if (saved.timeframe) state.timeframe = saved.timeframe;
+    if (saved.source) state.source = saved.source;
+    if (typeof saved.auto === "boolean") state.auto = saved.auto;
+  } catch (e) { /* 忽略 */ }
+  function savePrefs() {
+    try { localStorage.setItem("quantx_chart_prefs", JSON.stringify({ symbol: state.symbol, timeframe: state.timeframe, source: state.source, auto: state.auto })); } catch (e) {}
+  }
   const TIMEFRAMES = ["1m", "5m", "15m", "1h", "4h", "1d"];
   const SYMBOLS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "DOGE/USDT"];
   const SOURCES = [["synthetic", "合成数据"], ["auto", "自动(交易所优先)"], ["db", "本地数据库"], ["exchange", "仅交易所"]];
@@ -34,7 +45,7 @@ App.register("chart", (() => {
               <span class="chip active" data-ind="RSI">RSI</span>
               <span class="chip active" data-ind="MACD">MACD</span>
               <span class="chip" data-ind="markers">交易点</span>
-              <span class="chip" data-ind="auto" title="每 10 秒自动刷新">自动刷新</span>
+              <span class="chip${state.auto ? " active" : ""}" data-ind="auto" title="每 10 秒自动刷新">自动刷新</span>
             </div>
           </div>
           <button class="btn btn-primary btn-sm" id="ch-reload">⟳ 刷新</button>
@@ -47,8 +58,8 @@ App.register("chart", (() => {
     const symSel = document.getElementById("ch-symbol");
     symSel.value = state.symbol;
     document.getElementById("ch-symbol-list").innerHTML = SYMBOLS.map((s) => '<option value="' + s + '">').join("");
-    symSel.addEventListener("change", () => { state.symbol = symSel.value.trim().toUpperCase(); load(); });
-    symSel.addEventListener("keydown", (e) => { if (e.key === "Enter") { state.symbol = symSel.value.trim().toUpperCase(); load(); } });
+    symSel.addEventListener("change", () => { state.symbol = symSel.value.trim().toUpperCase(); savePrefs(); load(); });
+    symSel.addEventListener("keydown", (e) => { if (e.key === "Enter") { state.symbol = symSel.value.trim().toUpperCase(); savePrefs(); load(); } });
     const tfBox = document.getElementById("ch-timeframes");
     tfBox.innerHTML = TIMEFRAMES.map((t) => '<span class="chip ' + (t === state.timeframe ? "active" : "") + '" data-tf="' + t + '">' + t + '</span>').join("");
     tfBox.querySelectorAll("[data-tf]").forEach((c) => c.addEventListener("click", () => {
@@ -59,12 +70,12 @@ App.register("chart", (() => {
     }));
     const srcSel = document.getElementById("ch-source");
     srcSel.innerHTML = SOURCES.map(([v, l]) => '<option value="' + v + '" ' + (v === state.source ? "selected" : "") + '>' + l + '</option>').join("");
-    srcSel.addEventListener("change", () => { state.source = srcSel.value; load(); });
+    srcSel.addEventListener("change", () => { state.source = srcSel.value; savePrefs(); load(); });
     document.getElementById("ch-indicators").querySelectorAll("[data-ind]").forEach((c) => {
       c.addEventListener("click", () => {
         c.classList.toggle("active");
         const ind = c.dataset.ind;
-        if (ind === "auto") { state.auto = c.classList.contains("active"); return; }
+        if (ind === "auto") { state.auto = c.classList.contains("active"); savePrefs(); return; }
         const key = ind === "MA" ? "showMA" : ind === "BOLL" ? "showBOLL" : ind === "RSI" ? "showRSI" : ind === "MACD" ? "showMACD" : "showMarkers";
         state[key] = c.classList.contains("active");
         draw();
@@ -82,6 +93,11 @@ App.register("chart", (() => {
     try {
       const data = await API.get("/api/ohlcv?symbol=" + encodeURIComponent(state.symbol) + "&timeframe=" + state.timeframe + "&limit=" + state.limit + "&source=" + state.source);
       state.data = data;
+      const srcLabel = { synthetic: "合成", auto: "交易所优先", db: "本地库", exchange: "OKX" }[data.source] || data.source;
+      if (titleEl) titleEl.textContent = state.symbol + " · " + state.timeframe + " · " + srcLabel;
+      const priceEl = document.getElementById("ch-price");
+      const lastBar = data.bars && data.bars.length ? data.bars[data.bars.length - 1] : null;
+      if (priceEl && lastBar) priceEl.textContent = FMT.price(lastBar.close) + " · " + FMT.time(lastBar.time);
       draw();
     } catch (e) {
       App.toast("行情加载失败: " + e.message, "error");
@@ -96,7 +112,8 @@ App.register("chart", (() => {
     const title = document.getElementById("ch-title");
     const priceEl = document.getElementById("ch-price");
     const last = data.bars[data.bars.length - 1];
-    title.textContent = data.symbol + " · " + data.timeframe + " · " + (data.source === "synthetic" ? "合成数据" : data.source);
+    const srcLabel = data.source === "synthetic" ? "合成数据" : data.source === "auto" ? "交易所优先" : data.source === "exchange" ? "OKX" : data.source === "db" ? "本地库" : data.source;
+    title.textContent = data.symbol + " · " + data.timeframe + " · " + srcLabel;
     if (priceEl) {
       const prev = data.bars[data.bars.length - 2];
       const chg = prev ? (last.close - prev.close) / prev.close : 0;

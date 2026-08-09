@@ -167,13 +167,22 @@ class MarketMonitor:
         self.last_scan = datetime.now(timezone.utc).isoformat()
 
     def _fetch_exchange(self) -> dict[str, pd.DataFrame]:
-        fetcher = ExchangeDataFetcher(self.cfg["exchange"]["id"], proxy=exchange_proxy(self.cfg))
-        out = {}
-        for sym in self.symbols:
+        from concurrent.futures import ThreadPoolExecutor
+
+        def one(sym: str) -> tuple[str, pd.DataFrame | None]:
             try:
-                out[sym] = fetcher.fetch_ohlcv(sym, "1m", limit=1500)
+                f = ExchangeDataFetcher(self.cfg["exchange"]["id"], proxy=exchange_proxy(self.cfg))
+                return sym, f.fetch_ohlcv(sym, "1m", limit=1500)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("获取 %s 失败: %s", sym, exc)
+                return sym, None
+
+        out: dict[str, pd.DataFrame] = {}
+        workers = min(8, max(1, len(self.symbols)))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for sym, df in pool.map(one, self.symbols):
+                if df is not None and not df.empty:
+                    out[sym] = df
         if not out:
             raise RuntimeError("交易所行情获取失败")
         return out
