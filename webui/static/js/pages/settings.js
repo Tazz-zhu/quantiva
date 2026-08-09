@@ -38,6 +38,7 @@ App.register("settings", (() => {
             </div>
             <button class="btn btn-sm" id="st-ex-test">🔌 测试交易所连接</button>
             <span id="st-ex-result" style="font-size:12px;margin-left:8px"></span>
+            <div class="hint" id="st-ex-status" style="margin-top:8px">密钥/代理状态检测中…</div>
             <div class="hint" style="margin-top:8px">🔗 获取 API Key（点击前往）：
               <a href="https://www.binance.com/zh-CN/support/faq/how-to-create-api-keys-on-binance-360002502072" target="_blank" rel="noopener">Binance</a> ·
               <a href="https://www.okx.com/zh-hans/account/my-api" target="_blank" rel="noopener">OKX</a> ·
@@ -170,6 +171,15 @@ App.register("settings", (() => {
     });
     document.getElementById("st-fs-test").addEventListener("click", testFeishu);
     document.getElementById("st-ex-test").addEventListener("click", testExchange);
+    API.get("/api/exchange/status").then((s) => {
+      const el = document.getElementById("st-ex-status");
+      if (!el) return;
+      const keyOk = s.has_api_key && s.has_api_secret ? "已加载" : "未加载";
+      const passOk = s.exchange === "okx" ? (s.has_passphrase ? "已配置" : "未配置（OKX 必填）") : "-";
+      const proxyOk = s.proxy_configured ? s.proxy : "未配置";
+      el.innerHTML = "密钥：" + keyOk + " ｜ 口令：" + passOk + " ｜ 代理：" + proxyOk + " ｜ 交易所：" + s.exchange
+        + "<br><span style=\"color:var(--text-faint)\">注：上方 Key / Secret / 口令仅用于连接测试，不会保存；正式运行从项目根目录 .env 或环境变量读取。</span>";
+    }).catch(() => { const el = document.getElementById("st-ex-status"); if (el) el.textContent = "状态检测失败"; });
     document.getElementById("st-chpwd").addEventListener("click", changePassword);
     document.getElementById("st-backup").addEventListener("click", backupNow);
     document.getElementById("st-audit-refresh").addEventListener("click", loadAudit);

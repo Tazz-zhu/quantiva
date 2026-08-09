@@ -195,9 +195,14 @@ def _load_ohlcv(symbol: str, timeframe: str, limit: int, source: str) -> tuple[p
 
 
 def _fetch_tickers(symbols: list[str], exchange_id: str) -> dict:
+    proxy = exchange_proxy(state.config)
+
     def one(sym: str) -> tuple[str, dict]:
         try:
-            ex = getattr(ccxt, exchange_id)({"enableRateLimit": True, "timeout": 4000})
+            t_params = {"enableRateLimit": True, "timeout": 4000}
+            if proxy:
+                t_params["proxies"] = {"http": proxy, "https": proxy}
+            ex = getattr(ccxt, exchange_id)(t_params)
             t = ex.fetch_ticker(sym)
             return sym, {"ok": True, "last": t.get("last"), "bid": t.get("bid"), "ask": t.get("ask"), "change_pct": t.get("percentage")}
         except Exception as exc:  # noqa: BLE001
@@ -892,6 +897,19 @@ def create_app() -> FastAPI:
         return state.monitor.rankings()
 
     # ---------------- 交易所测试 ----------------
+    @app.get("/api/exchange/status")
+    def exchange_status():
+        """密钥/代理加载状态（只返回是否存在，不返回真实值）。"""
+        return {
+            "exchange": state.config.get("exchange", {}).get("id"),
+            "sandbox": state.config.get("exchange", {}).get("sandbox", False),
+            "has_api_key": bool(os.getenv("CCXT_API_KEY")),
+            "has_api_secret": bool(os.getenv("CCXT_API_SECRET")),
+            "has_passphrase": bool(os.getenv("CCXT_API_PASSPHRASE") or os.getenv("CCXT_PASSWORD")),
+            "proxy": exchange_proxy(state.config),
+            "proxy_configured": bool(exchange_proxy(state.config)),
+        }
+
     @app.post("/api/exchange/test")
     def exchange_test(body: dict):
         exchange_id = body.get("exchange_id") or state.config["exchange"]["id"]
