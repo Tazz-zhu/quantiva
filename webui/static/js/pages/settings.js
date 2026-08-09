@@ -14,10 +14,9 @@ App.register("settings", (() => {
     const ai = cfg.ai || {};
     const fs = (cfg.notify || {}).feishu || {};
     const nt = cfg.notify || {};
-    const cm = cfg.community || {};
+
     page.innerHTML = `
-      <div class="grid grid-layout-backtest">
-        <div class="side-panel">
+      <div class="grid grid-settings">
           <div class="card">
             <div class="card-title">🌐 交易所</div>
             <div class="field"><label>交易所 (ccxt)</label>
@@ -91,14 +90,6 @@ App.register("settings", (() => {
             <div class="hint" style="margin-top:8px">🔗 创建飞书自定义机器人 / 获取 Webhook：<a href="https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot" target="_blank" rel="noopener">飞书开放平台官方文档</a></div>
           </div>
           <div class="card">
-            <div class="card-title">💬 用户社群</div>
-            <div class="field"><label>QQ 群一键加群链接</label><input class="input" id="st-qq-url" placeholder="如 https://qm.qq.com/q/xxxxxx" value="${cm.qq_url || ''}"></div>
-            <div class="field"><label>QQ 群号（无链接时用户可复制）</label><input class="input" id="st-qq-group" placeholder="如 123456789" value="${cm.qq_group || ''}"></div>
-            <div class="field"><label>微信链接（群 / 客服）</label><input class="input" id="st-wechat-url" placeholder="可选" value="${cm.wechat_url || ''}"></div>
-            <div class="field"><label>微信二维码图片地址</label><input class="input" id="st-wechat-qr" placeholder="/static/community/wechat.png 或 https://…" value="${cm.wechat_qr || ''}"></div>
-            <div class="hint">配置后，侧栏「加入社群」按钮会展示对应入口；留空则不显示。</div>
-          </div>
-          <div class="card">
             <div class="card-title">🔐 安全与运维</div>
             <div class="field"><label>原密码</label><input class="input" id="st-oldpwd" type="password" placeholder="当前密码"></div>
             <div class="input-row">
@@ -144,12 +135,10 @@ App.register("settings", (() => {
           <button class="btn btn-primary btn-block btn-run" id="st-save">💾 保存全部配置</button>
           <button class="btn btn-block" id="st-reset-config" style="margin-top:8px">♻️ 恢复默认配置</button>
         </div>
-        <div>
           <div class="card">
             <div class="card-title">📋 当前配置预览</div>
             <pre id="st-preview" style="font-family:var(--mono);font-size:12px;color:var(--text-dim);max-height:620px;overflow:auto;white-space:pre-wrap;background:rgba(0,0,0,0.25);padding:16px;border-radius:10px">${JSON.stringify(cfg, null, 2)}</pre>
           </div>
-        </div>
       </div>
     `;
     document.getElementById("st-save").addEventListener("click", save);
@@ -302,13 +291,6 @@ App.register("settings", (() => {
       backtest: { fee_rate: parseFloat(document.getElementById("st-fee").value) || 0.001, slippage: parseFloat(document.getElementById("st-slip").value) || 0.0005 },
       live: { poll_interval_sec: parseFloat(document.getElementById("st-poll").value) || 60, paper_initial_balance: parseFloat(document.getElementById("st-balance").value) || 10000 },
       data: { storage_db: document.getElementById("st-db").value.trim() },
-      community: {
-        enabled: true,
-        qq_url: document.getElementById("st-qq-url").value.trim(),
-        qq_group: document.getElementById("st-qq-group").value.trim(),
-        wechat_url: document.getElementById("st-wechat-url").value.trim(),
-        wechat_qr: document.getElementById("st-wechat-qr").value.trim(),
-      },
     };
     try {
       const res = await API.post("/api/config", patch);
