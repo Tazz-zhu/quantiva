@@ -85,3 +85,9 @@ system:
 deployment:
   role: all
   node_id: node-1
+community:
+  enabled: true
+  qq_url: ''
+  qq_group: ''
+  wechat_url: ''
+  wechat_qr: ''

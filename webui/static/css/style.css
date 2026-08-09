@@ -925,3 +925,12 @@ body.sidebar-collapsed .logo-sub { display: none; }
 }
 .btn-top:hover { transform: translateY(-2px); }
 @media (max-width: 720px) { .quick-search { display: none; } }
+
+/* 社群功能 */
+.btn-community { margin-bottom: 10px; border-color: rgba(76, 141, 255, 0.35); color: #a5c8ff; }
+.btn-community:hover { background: rgba(76, 141, 255, 0.15); }
+.community-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.community-item:last-child { border-bottom: none; }
+.community-name { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+.community-qr { width: 160px; height: 160px; object-fit: contain; border-radius: 10px; border: 1px solid var(--border-strong); background: #fff; }
+html[data-theme="light"] .btn-community { color: #1d4ed8; }

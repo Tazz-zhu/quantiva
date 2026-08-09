@@ -89,6 +89,8 @@
   // ---------- Logo 返回仪表盘 ----------
   const logoHome = document.getElementById("logo-home");
   if (logoHome) logoHome.addEventListener("click", () => App.go("dashboard"));
+  const commBtn = document.getElementById("btn-community");
+  if (commBtn) commBtn.addEventListener("click", () => App.communityDialog());
 
   // ---------- 回到顶部 ----------
   const topBtn = document.getElementById("btn-top");

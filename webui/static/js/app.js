@@ -196,6 +196,58 @@ window.App = (() => {
     });
   }
 
+  // ---------- 加入社群弹窗 ----------
+  async function communityDialog() {
+    const root = document.getElementById("modal-root");
+    if (!root) return;
+    let cfg = {};
+    try {
+      const res = await API.get("/api/config");
+      cfg = res.community || {};
+    } catch (e) { /* 忽略 */ }
+    const qqUrl = cfg.qq_url || "";
+    const qqGroup = cfg.qq_group || "";
+    const wechatUrl = cfg.wechat_url || "";
+    const wechatQr = cfg.wechat_qr || "";
+    const hasAny = !!(qqUrl || qqGroup || wechatUrl || wechatQr);
+    let bodyHtml = "";
+    if (!hasAny) {
+      bodyHtml = '<div class="empty" style="padding:18px">社群链接还未配置<br><span style="font-size:11px">可在「系统设置 → 社群」中填写 QQ / 微信入口</span></div>';
+    } else {
+      if (qqUrl || qqGroup) {
+        bodyHtml += '<div class="community-item"><div class="community-name">QQ 群</div><div style="display:flex;gap:8px;flex-wrap:wrap">'
+          + (qqUrl ? '<a class="btn btn-primary btn-sm" href="' + qqUrl + '" target="_blank" rel="noopener">加入 QQ 群</a>' : '')
+          + (qqGroup ? '<button class="btn btn-sm" id="comm-copy-qq">复制群号：' + qqGroup + '</button>' : '')
+          + '</div></div>';
+      }
+      if (wechatUrl || wechatQr) {
+        bodyHtml += '<div class="community-item"><div class="community-name">微信</div>'
+          + (wechatQr ? '<img class="community-qr" src="' + wechatQr + '" alt="微信二维码">' : '')
+          + (wechatUrl ? '<div style="margin-top:8px"><a class="btn btn-primary btn-sm" href="' + wechatUrl + '" target="_blank" rel="noopener">打开微信</a></div>' : '')
+          + '</div>';
+      }
+    }
+    const mask = EL('<div class="modal-mask"><div class="modal"><div class="modal-title">💬 加入 Quantiva 用户社群</div><div class="modal-body">' + bodyHtml + '</div><div class="modal-actions"><button class="btn" id="comm-close">关闭</button></div></div></div>');
+    function close() { root.removeChild(mask); }
+    mask.querySelector("#comm-close").addEventListener("click", close);
+    mask.addEventListener("click", (e) => { if (e.target === mask) close(); });
+    const copyBtn = mask.querySelector("#comm-copy-qq");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => {
+        const group = copyBtn.textContent.replace("复制群号：", "").trim();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(group).then(() => toast("QQ 群号已复制", "success")).catch(() => {});
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = group; document.body.appendChild(ta); ta.select();
+          try { document.execCommand("copy"); toast("QQ 群号已复制", "success"); } catch (e) {}
+          ta.remove();
+        }
+      });
+    }
+    root.appendChild(mask);
+  }
+
   function hideLogin() {
     const screen = document.getElementById("login-screen");
     if (screen) screen.style.display = "none";
@@ -445,5 +497,5 @@ window.App = (() => {
     stripEmoji(document.body);
   }
 
-  return { pages, register, go, toast, initClock, checkHealth, initAuth, showLogin, hideLogin, autoTips, initTips, professionalize, confirmDialog, isStreaming, get current() { return current; } };
+  return { pages, register, go, toast, initClock, checkHealth, initAuth, showLogin, hideLogin, autoTips, initTips, professionalize, confirmDialog, isStreaming, communityDialog, get current() { return current; } };
 })();

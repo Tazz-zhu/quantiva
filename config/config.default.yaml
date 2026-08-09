@@ -80,6 +80,13 @@ notify:
   on_backtest: false
 
 # 策略进化实验室
+# 社群入口（QQ / 微信；配置后侧栏显示「加入社群」按钮）
+community:
+  enabled: true
+  qq_url: ""          # QQ 群一键加群链接
+  qq_group: ""        # QQ 群号（无链接时一键复制）
+  wechat_url: ""      # 微信群 / 客服链接（可选）
+  wechat_qr: ""       # 微信二维码图片（http(s) 或 /static/community/xx.png）
 evolution:
   db_path: data/evolution.db
   auto_analyze_enabled: true
