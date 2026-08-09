@@ -1,0 +1,17 @@
+[Unit]
+Description=QuantumX Crypto Quant Trading System
+After=network.target
+
+[Service]
+Type=simple
+User=quantumx
+WorkingDirectory=/opt/quantumx
+Environment=PYTHONIOENCODING=utf-8
+Environment=CCXT_API_KEY=
+Environment=CCXT_API_SECRET=
+ExecStart=/usr/bin/python3 /opt/quantumx/scripts/webui.py --prod --port 8686
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

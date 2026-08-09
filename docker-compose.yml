@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  quantumx:
+    build: .
+    container_name: quantumx
+    restart: unless-stopped
+    ports:
+      - "8686:8686"
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./reports:/app/reports
+    environment:
+      - TZ=Asia/Shanghai
+      # ??? API??????? .env ???
+      - CCXT_API_KEY=${CCXT_API_KEY:-}
+      - CCXT_API_SECRET=${CCXT_API_SECRET:-}
+      - FEISHU_WEBHOOK=${FEISHU_WEBHOOK:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8686/api/health', timeout=5)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 环境变量与密钥
+.env
+.env.local
+.env.*.local
+
+# 运行时数据（数据库 / 日志 / 备份 / 截图 / 证书 / 实盘会话）
+data/*
+!data/.gitkeep
+data/**/*.db
+data/**/*.db-journal
+data/**/*.log
+data/logs/
+data/backups/
+data/screenshots/
+data/tls/
+data/live_session.json
+
+# 回测/报告产物
+reports/*
+!reports/.gitkeep
+reports/runs/
+reports/*.png
+reports/*.json
+reports/*.csv
+
+# 本地配置覆盖（如想提交本地 config 请删除下一行）
+# config/config.local.yaml
+
+# IDE / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+_pw.js

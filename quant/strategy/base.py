@@ -1,0 +1,27 @@
+"""?????"""
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import Any
+
+import pandas as pd
+
+
+class Strategy(ABC):
+    """????????????????????
+
+    generate_signals ????? df ??????????
+    +1 = ???-1 = ???0 = ???
+    """
+
+    name: str = "base"
+
+    def __init__(self, params: dict[str, Any] | None = None):
+        self.params = dict(params or {})
+
+    @abstractmethod
+    def generate_signals(self, df: pd.DataFrame) -> pd.Series:
+        """?????????"""
+
+    def __repr__(self) -> str:
+        return f"{self.name}({self.params})"

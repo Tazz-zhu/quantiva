@@ -1,0 +1,109 @@
+﻿# Quantiva 配置文件（所有参数均有默认值，可只保留需要覆盖的项）
+
+exchange:
+  id: binance          # ccxt 交易所标识：binance / okx / bybit / gateio / bitget
+  sandbox: false       # 是否使用测试网
+
+data:
+  symbol: BTC/USDT
+  timeframe: 1h
+  days: 730            # 回测/抓取的默认天数
+  storage_db: data/ohlcv.db
+  quote: USDT
+
+strategy:
+  name: ma_cross       # 默认策略（回测页可选全部经典策略）
+  params:
+    fast: 20
+    slow: 50
+    direction: long_only   # long_only | long_short
+
+risk:
+  max_position_pct: 0.5       # 每笔仓位名义价值占权益比例上限（0~1）
+  leverage: 1.0               # 杠杆倍数（开仓保证金 = 名义/杠杆）
+  stop_loss_pct: null         # 固定止损，如 0.03 = 3%
+  take_profit_pct: null       # 固定止盈
+  atr_stop_mult: 2.0          # 未设固定止损时，用 entry ± atr_stop_mult * ATR
+  risk_per_trade_pct: 0.0     # 单笔风险预算（权益%）：如 0.01 = 每笔最多亏 1%，0=关闭用固定比例
+  trailing_stop_mult: 0.0     # ATR 移动止损（0=关闭）：止损随有利方向移动
+  trailing_stop_pct: 0.0      # 固定%移动止损（0=关闭）
+  break_even_after_mult: 0.0  # 盈利达到 N 倍 ATR 后止损移至成本价（保本，0=关闭）
+  max_positions: 1
+  max_daily_loss_pct: null    # 实盘日亏损熔断：如 0.02 = 当日亏损达权益 2% 即熔断（次日 UTC 0 点复位）
+  max_drawdown_pct: null      # 组合权益回撤熔断：如 0.05 = 从峰值回撤 5% 即平仓并暂停开仓
+  require_live_confirm: true  # 实盘启动是否需要二次确认（建议保持开启）
+  trade_direction: long_only
+
+backtest:
+  initial_capital: 10000
+  fee_rate: 0.001          # 0.1% 手续费
+  slippage: 0.0005         # 0.05% 滑点
+  funding_rate_8h: 0.0     # 永续合约资金费率（每 8 小时），如 0.001 = 0.1%；0 表示不模拟
+
+live:
+  poll_interval_sec: 60
+  warmup_bars: 200
+  mode: paper              # paper(模拟盘) | live(实盘)
+  paper_initial_balance: 10000
+
+report:
+  output_dir: reports
+
+# AI 大模型（策略优化建议，OpenAI 兼容）
+ai:
+  enabled: false
+  api_key_env: OPENAI_API_KEY
+  base_url: https://api.openai.com/v1
+  model: gpt-4o-mini
+  temperature: 0.4
+
+# 市场监控（32 币种，24h 常驻）
+monitor:
+  enabled: true
+  interval_sec: 30
+  source: synthetic         # synthetic | exchange
+  symbols: []               # 留空使用默认 32 个主流币种
+  thresholds:
+    volume_ratio: 3.0       # 放量倍数
+    price_1h: 0.025         # 1小时涨跌阈值
+    price_24h: 0.08         # 24小时涨跌阈值
+    alert_cooldown_min: 15  # 告警冷却（分钟）
+
+# 飞书推送
+notify:
+  feishu:
+    enabled: false
+    webhook: ""             # 或环境变量 FEISHU_WEBHOOK
+    secret: ""              # 机器人签名密钥（可选）
+  on_trade: true
+  on_alert: true
+  on_backtest: false
+
+# 策略进化实验室
+evolution:
+  db_path: data/evolution.db
+  auto_analyze_enabled: true
+  auto_analyze_interval_hours: 6
+  save_backtest_trades: false
+  save_live_trades: true
+
+# 访问认证
+auth:
+  enabled: true
+  username: admin
+  password: admin123        # 首次登录后请在设置页修改（自动转为哈希）
+  password_hash: ""
+
+# 系统运维
+system:
+  data_dir: data
+  log_dir: data/logs
+  backup:
+    enabled: true
+    interval_hours: 24
+    keep: 7
+
+# 多节点部署（可用环境变量 QUANTX_ROLE / QUANTX_NODE_ID 覆盖）
+deployment:
+  role: all                 # all | monitor | trader | web
+  node_id: node-1

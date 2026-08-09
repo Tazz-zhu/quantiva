@@ -1,0 +1,8 @@
+# 统一行尾为 LF，避免跨平台 diff 噪音
+* text=auto eol=lf
+
+# 二进制文件不进行文本归一化
+*.png binary
+*.jpg binary
+*.ico binary
+*.svg text eol=lf

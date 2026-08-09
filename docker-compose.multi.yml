@@ -1,0 +1,72 @@
+# ============================================================
+# QuantumX ?????????????
+# ??: monitor ???????? + trader ?????/??? + web ???????
+# ??: ????????????????NFS/EFS ???SQLite ???????
+#       ??????????????? PostgreSQL?? README ??????
+# ??: docker compose -f docker-compose.multi.yml up -d --build
+# ============================================================
+version: "3.8"
+
+x-common: &common
+  build: .
+  restart: unless-stopped
+  volumes:
+    - ./config:/app/config
+    - ./data:/app/data
+    - ./reports:/app/reports
+  environment: &env
+    - TZ=Asia/Shanghai
+    - CCXT_API_KEY=${CCXT_API_KEY:-}
+    - CCXT_API_SECRET=${CCXT_API_SECRET:-}
+    - FEISHU_WEBHOOK=${FEISHU_WEBHOOK:-}
+    - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+
+services:
+  # ?? 1: ????????? + ???? + ?????
+  monitor:
+    <<: *common
+    container_name: quantumx-monitor
+    environment:
+      <<: *env
+      - QUANTX_ROLE=monitor
+      - QUANTX_NODE_ID=monitor-1
+    command: ["python", "scripts/webui.py", "--prod", "--port", "8686"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8686/api/health', timeout=5)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ?? 2: ???????/??? + ??????????????
+  trader:
+    <<: *common
+    container_name: quantumx-trader
+    environment:
+      <<: *env
+      - QUANTX_ROLE=trader
+      - QUANTX_NODE_ID=trader-1
+    command: ["python", "scripts/webui.py", "--prod", "--port", "8686"]
+    ports:
+      - "8687:8686"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8686/api/health', timeout=5)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ?? 3: Web ??????/??/????????
+  web:
+    <<: *common
+    container_name: quantumx-web
+    environment:
+      <<: *env
+      - QUANTX_ROLE=web
+      - QUANTX_NODE_ID=web-1
+    command: ["python", "scripts/webui.py", "--prod", "--port", "8686"]
+    ports:
+      - "8686:8686"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8686/api/health', timeout=5)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

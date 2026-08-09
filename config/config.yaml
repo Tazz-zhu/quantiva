@@ -1,0 +1,87 @@
+exchange:
+  id: binance
+  sandbox: false
+data:
+  symbol: BTC/USDT
+  timeframe: 1h
+  days: 730
+  storage_db: data/ohlcv.db
+  quote: USDT
+strategy:
+  name: ma_cross
+  params:
+    fast: 20
+    slow: 50
+    direction: long_only
+risk:
+  max_position_pct: 0.5
+  leverage: 1.0
+  stop_loss_pct: null
+  take_profit_pct: null
+  atr_stop_mult: 2.0
+  max_positions: 1
+  max_daily_loss_pct: null
+  trade_direction: long_only
+  risk_per_trade_pct: 0.0
+  trailing_stop_mult: 0.0
+  trailing_stop_pct: 0.0
+  break_even_after_mult: 0.0
+  max_drawdown_pct: null
+  require_live_confirm: true
+backtest:
+  initial_capital: 10000
+  fee_rate: 0.001
+  slippage: 0.0005
+  funding_rate_8h: 0.0
+live:
+  poll_interval_sec: 60
+  warmup_bars: 200
+  mode: paper
+  paper_initial_balance: 10000
+report:
+  output_dir: reports
+ai:
+  enabled: false
+  api_key_env: OPENAI_API_KEY
+  base_url: https://api.openai.com/v1
+  model: gpt-4o-mini
+  temperature: 0.4
+monitor:
+  enabled: true
+  interval_sec: 30
+  source: synthetic
+  symbols: []
+  thresholds:
+    volume_ratio: 3.0
+    price_1h: 0.025
+    price_24h: 0.08
+    alert_cooldown_min: 15
+notify:
+  feishu:
+    enabled: false
+    webhook: ''
+    secret: ''
+  on_trade: true
+  on_alert: true
+  on_backtest: false
+evolution:
+  db_path: data/evolution.db
+  auto_analyze_enabled: true
+  auto_analyze_interval_hours: 6
+  save_backtest_trades: false
+  save_live_trades: true
+auth:
+  enabled: true
+  username: admin
+  password: admin123
+  password_hash: ''
+system:
+  data_dir: data
+  log_dir: data/logs
+  backup:
+    enabled: true
+    interval_hours: 24
+    keep: 7
+deployment:
+  role: all
+  node_id: node-1
