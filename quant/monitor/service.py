@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from quant.config import exchange_proxy
 from quant.data.fetcher import ExchangeDataFetcher
 from quant.utils.logger import setup_logger
 from quant.web.live_manager import SyntheticLiveData
@@ -166,7 +167,7 @@ class MarketMonitor:
         self.last_scan = datetime.now(timezone.utc).isoformat()
 
     def _fetch_exchange(self) -> dict[str, pd.DataFrame]:
-        fetcher = ExchangeDataFetcher(self.cfg["exchange"]["id"])
+        fetcher = ExchangeDataFetcher(self.cfg["exchange"]["id"], proxy=exchange_proxy(self.cfg))
         out = {}
         for sym in self.symbols:
             try:

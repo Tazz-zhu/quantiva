@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from quant.config import exchange_proxy
 from quant.data.fetcher import ExchangeDataFetcher, generate_synthetic_ohlcv, to_pandas_freq
 from quant.data.indicators import atr
 from quant.execution.ccxt_broker import CCXTBroker
@@ -158,6 +159,7 @@ class LiveManager:
                 self.broker = CCXTBroker(
                     self.cfg["exchange"]["id"],
                     sandbox=self.cfg["exchange"].get("sandbox", False),
+                    proxy=exchange_proxy(self.cfg),
                 )
 
             if self.data_source == "synthetic" or self.data_source == "auto":

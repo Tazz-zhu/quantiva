@@ -52,13 +52,16 @@ TIMEFRAME_NANOS = {
 class ExchangeDataFetcher:
     """?? ccxt ?????? K ??????????? API ????"""
 
-    def __init__(self, exchange_id: str = "binance", sandbox: bool = False):
+    def __init__(self, exchange_id: str = "binance", sandbox: bool = False, proxy: str = ""):
         import ccxt
 
         if not hasattr(ccxt, exchange_id):
             raise ValueError(f"???????: {exchange_id}")
         exchange_cls = getattr(ccxt, exchange_id)
-        self.exchange = exchange_cls({"enableRateLimit": True, "sandbox": sandbox})
+        params = {"enableRateLimit": True, "sandbox": sandbox}
+        if proxy:
+            params["proxies"] = {"http": proxy, "https": proxy}
+        self.exchange = exchange_cls(params)
         logger.info("??????: %s", exchange_id)
 
     def fetch_ohlcv(

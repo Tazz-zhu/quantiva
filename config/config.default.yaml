@@ -2,7 +2,8 @@
 
 exchange:
   id: okx          # ccxt 交易所标识：binance / okx / bybit / gateio / bitget
-  sandbox: false       # 是否使用测试网
+  sandbox: false
+  proxy: ""            # 代理地址（可选），如 http://127.0.0.1:65532       # 是否使用测试网
 
 data:
   symbol: BTC/USDT

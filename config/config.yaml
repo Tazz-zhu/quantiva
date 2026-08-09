@@ -1,6 +1,7 @@
 exchange:
   id: okx
   sandbox: false
+  proxy: ""            # 代理地址（可选），如 http://127.0.0.1:65532
 data:
   symbol: BTC/USDT
   timeframe: 1h

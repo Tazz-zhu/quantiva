@@ -23,7 +23,7 @@ from quant.evolution.manager import EvolutionManager
 from quant.monitor.service import MarketMonitor
 from quant.notify.feishu import FeishuNotifier
 from quant.report.analysis import analyze
-from quant.config import load_config
+from quant.config import exchange_proxy, load_config
 from quant.data.fetcher import ExchangeDataFetcher, generate_synthetic_ohlcv
 from quant.data.storage import SQLiteStorage
 from quant.risk.manager import RiskManager
@@ -158,7 +158,7 @@ class BacktestManager:
         storage = SQLiteStorage(data_cfg.get("storage_db", "data/ohlcv.db"))
         df = storage.load_ohlcv(symbol, timeframe)
         if len(df) < 200:
-            fetcher = ExchangeDataFetcher(data_cfg.get("exchange", "binance"))
+            fetcher = ExchangeDataFetcher(data_cfg.get("exchange", "binance"), proxy=exchange_proxy(load_config(self.config_path)))
             df = fetcher.fetch_ohlcv_paginated(symbol, timeframe, days=days)
             storage.save_ohlcv(symbol, timeframe, df)
         storage.close()

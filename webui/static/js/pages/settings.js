@@ -30,6 +30,7 @@ App.register("settings", (() => {
                 <option value="true" ${cfg.exchange.sandbox ? "selected" : ""}>是</option>
               </select>
             </div>
+            <div class="field"><label>代理地址（可选，国内访问 OKX 建议填写）</label><input class="input" id="st-ex-proxy" placeholder="如 http://127.0.0.1:65532" value="${cfg.exchange.proxy || ''}"></div>
             <div class="input-row-3">
               <div class="field"><label>API Key（测试用）</label><input class="input" id="st-api-key" placeholder="可选"></div>
               <div class="field"><label>API Secret（测试用）</label><input class="input" id="st-api-secret" placeholder="可选"></div>
@@ -186,6 +187,7 @@ App.register("settings", (() => {
         api_key: document.getElementById("st-api-key").value.trim(),
         api_secret: document.getElementById("st-api-secret").value.trim(),
         api_passphrase: document.getElementById("st-api-pass").value.trim(),
+        proxy: document.getElementById("st-ex-proxy").value.trim(),
       });
       result.textContent = res.ok ? "✅ " + res.detail : "❌ " + res.detail;
       result.style.color = res.ok ? "var(--green)" : "var(--red)";
@@ -288,7 +290,7 @@ App.register("settings", (() => {
 
   async function save() {
     const patch = {
-      exchange: { id: document.getElementById("st-exchange").value.trim(), sandbox: document.getElementById("st-sandbox").value === "true" },
+      exchange: { id: document.getElementById("st-exchange").value.trim(), sandbox: document.getElementById("st-sandbox").value === "true", proxy: document.getElementById("st-ex-proxy").value.trim() },
       ai: { enabled: document.getElementById("st-ai-enabled").value === "true", base_url: document.getElementById("st-ai-url").value.trim(), model: document.getElementById("st-ai-model").value.trim(), temperature: parseFloat(document.getElementById("st-ai-temp").value) || 0.4, api_key_env: document.getElementById("st-ai-env").value.trim(), api_key: document.getElementById("st-ai-key").value.trim() },
       notify: { feishu: { enabled: document.getElementById("st-fs-enabled").value === "true", webhook: document.getElementById("st-fs-webhook").value.trim(), secret: document.getElementById("st-fs-secret").value.trim() }, on_trade: document.getElementById("st-fs-trade").value === "true", on_alert: document.getElementById("st-fs-alert").value === "true" },
       backtest: { fee_rate: parseFloat(document.getElementById("st-fee").value) || 0.001, slippage: parseFloat(document.getElementById("st-slip").value) || 0.0005 },

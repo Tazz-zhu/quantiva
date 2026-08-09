@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
 
 from quant.backtest.engine import BacktestEngine
-from quant.config import load_config
+from quant.config import exchange_proxy, load_config
 from quant.data.fetcher import ExchangeDataFetcher, generate_synthetic_ohlcv
 from quant.data.storage import SQLiteStorage
 from quant.risk.manager import RiskManager
@@ -178,6 +178,6 @@ class Optimizer:
             if df.empty:
                 raise ValueError("?????")
             return df
-        fetcher = ExchangeDataFetcher(data_cfg.get("exchange", "binance"))
+        fetcher = ExchangeDataFetcher(data_cfg.get("exchange", "binance"), proxy=exchange_proxy(load_config(self.config_path)))
         since = int(pd.Timestamp.now(tz="UTC").timestamp() * 1000) - days * 86_400_000
         return fetcher.fetch_ohlcv(symbol, timeframe, since=since)

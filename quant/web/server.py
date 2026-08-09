@@ -20,7 +20,7 @@ from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from quant.config import load_config
+from quant.config import exchange_proxy, load_config
 from quant.data.fetcher import ExchangeDataFetcher, TIMEFRAME_NANOS, generate_synthetic_ohlcv, to_pandas_freq
 from quant.data.indicators import bollinger, macd, rsi, sma
 from quant.data.storage import SQLiteStorage
@@ -182,7 +182,7 @@ def _load_ohlcv(symbol: str, timeframe: str, limit: int, source: str) -> tuple[p
     if len(df) >= min(limit, 300):
         return df.tail(limit), "db"
     try:
-        fetcher = ExchangeDataFetcher(state.config["exchange"]["id"])
+        fetcher = ExchangeDataFetcher(state.config["exchange"]["id"], proxy=exchange_proxy(state.config))
         df = fetcher.fetch_ohlcv_paginated(symbol, timeframe, days=days)
         storage = SQLiteStorage(state.config["data"]["storage_db"])
         storage.save_ohlcv(symbol, timeframe, df)
@@ -526,7 +526,7 @@ def create_app() -> FastAPI:
             df = generate_synthetic_ohlcv(timeframe=timeframe, days=days, seed=int(body.get("seed", 42)))
         else:
             try:
-                fetcher = ExchangeDataFetcher(state.config["exchange"]["id"])
+                fetcher = ExchangeDataFetcher(state.config["exchange"]["id"], proxy=exchange_proxy(state.config))
                 df = fetcher.fetch_ohlcv_paginated(symbol, timeframe, days=days)
             except Exception as exc:  # noqa: BLE001
                 raise HTTPException(status_code=502, detail="交易所数据获取失败: " + str(exc)) from exc
@@ -895,12 +895,16 @@ def create_app() -> FastAPI:
     @app.post("/api/exchange/test")
     def exchange_test(body: dict):
         exchange_id = body.get("exchange_id") or state.config["exchange"]["id"]
-        api_key = body.get("api_key") or ""
-        api_secret = body.get("api_secret") or ""
+        api_key = body.get("api_key") or os.getenv("CCXT_API_KEY") or ""
+        api_secret = body.get("api_secret") or os.getenv("CCXT_API_SECRET") or ""
         api_passphrase = body.get("api_passphrase") or os.getenv("CCXT_API_PASSPHRASE") or os.getenv("CCXT_PASSWORD") or ""
+        proxy = body.get("proxy") or exchange_proxy(state.config)
         try:
             ex_cls = getattr(ccxt, exchange_id)
-            ex = ex_cls({"enableRateLimit": True, "timeout": 8000})
+            ex_params = {"enableRateLimit": True, "timeout": 8000}
+            if proxy:
+                ex_params["proxies"] = {"http": proxy, "https": proxy}
+            ex = ex_cls(ex_params)
             t = ex.fetch_ticker("BTC/USDT")
             public_ok = t.get("last") is not None
             detail = "公开行情连接成功（BTC/USDT 最新价 " + str(t.get("last")) + "）"
@@ -909,7 +913,12 @@ def create_app() -> FastAPI:
             balance_ok = None
             if api_key and api_secret:
                 try:
-                    ex2 = ex_cls({"apiKey": api_key, "secret": api_secret, "enableRateLimit": True, "timeout": 8000, **({"password": api_passphrase} if api_passphrase else {})})
+                    ex2_params = {"apiKey": api_key, "secret": api_secret, "enableRateLimit": True, "timeout": 8000}
+                    if api_passphrase:
+                        ex2_params["password"] = api_passphrase
+                    if proxy:
+                        ex2_params["proxies"] = {"http": proxy, "https": proxy}
+                    ex2 = ex_cls(ex2_params)
                     bal = ex2.fetch_balance()
                     totals = {k: v for k, v in (bal.get("total") or {}).items() if v}
                     balance_ok = True

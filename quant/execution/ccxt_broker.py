@@ -17,6 +17,7 @@ class CCXTBroker(Broker):
         api_secret: str | None = None,
         api_passphrase: str | None = None,
         sandbox: bool = False,
+        proxy: str = "",
     ):
         if not hasattr(ccxt, exchange_id):
             raise ValueError("不支持的交易所: " + exchange_id)
@@ -31,6 +32,8 @@ class CCXTBroker(Broker):
             "enableRateLimit": True,
             "sandbox": sandbox,
         }
+        if proxy:
+            params["proxies"] = {"http": proxy, "https": proxy}
         if passphrase:
             params["password"] = passphrase
         self.exchange = getattr(ccxt, exchange_id)(params)

@@ -1,9 +1,21 @@
 """???????????"""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import yaml
+
+
+def exchange_proxy(config: dict | None = None) -> str:
+    """交易所代理地址：优先配置 exchange.proxy，其次环境变量 EXCHANGE_PROXY / HTTPS_PROXY。"""
+    cfg = config or {}
+    return (
+        (cfg.get("exchange") or {}).get("proxy")
+        or os.getenv("EXCHANGE_PROXY")
+        or os.getenv("HTTPS_PROXY")
+        or ""
+    )
 
 DEFAULT_CONFIG = {
     "exchange": {"id": "binance", "sandbox": False},
