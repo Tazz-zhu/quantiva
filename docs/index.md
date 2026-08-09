@@ -34,6 +34,13 @@ description: 模块化、可上线部署的加密货币量化交易系统：回�
 - **实盘/模拟盘**：一键平仓、执行质量统计、会话持久化恢复
 - **体验**：深/浅/跟随系统主题、全局搜索、移动端适配、浏览器通知
 
+## 下载与安装
+
+- **ZIP 下载**：仓库首页 `Code → Download ZIP` 解压即可（无需 Git）
+- **Release 源码包**：[Releases](https://github.com/Tazz-zhu/quantiva/releases) 提供 tar.gz / zip
+- **Git 克隆**：`git clone https://github.com/Tazz-zhu/quantiva.git`
+- **Docker**：`docker compose up -d --build`
+
 ## 快速开始
 
 ```powershell

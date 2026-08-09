@@ -15,6 +15,32 @@
 
 ---
 
+## 📥 下载与安装
+
+**方式一：直接下载 ZIP（无需 Git）**
+- 仓库首页 → 绿色 `Code` 按钮 → `Download ZIP` → 解压即可
+- 或下载最新 Release 源码包：[Releases](https://github.com/Tazz-zhu/quantiva/releases)（tar.gz / zip，含对应版本源码）
+
+**方式二：Git 克隆**
+```powershell
+git clone https://github.com/Tazz-zhu/quantiva.git
+cd quantiva
+```
+
+**方式三：Docker（推荐服务器部署）**
+```bash
+cp .env.example .env   # 按需填写密钥
+docker compose up -d --build
+```
+
+**快速开始**
+```powershell
+pip install -r requirements.txt
+python scripts/webui.py        # 打开 http://127.0.0.1:8686
+```
+
+> 默认账号 `admin` / `admin123`，登录后请在「系统设置」中立即修改密码。离线环境选择「合成数据」即可完整演示全部功能。
+
 ## 🖼 界面预览
 
 登录页 | 仪表盘
