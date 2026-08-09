@@ -28,8 +28,8 @@ jobs:
       - name: Build source archives
         run: |
           mkdir -p dist
-          tar --exclude='.git' --exclude='data' --exclude='reports/runs' --exclude='__pycache__' --exclude='*.pyc' -czf dist/quantiva-${{ github.ref_name }}.tar.gz .
-          zip -r dist/quantiva-${{ github.ref_name }}.zip . -x ".git/*" "data/*" "reports/runs/*" "__pycache__/*" "*.pyc"
+          tar --exclude='.git' --exclude='data' --exclude='reports/runs' --exclude='__pycache__' --exclude='*.pyc' --exclude='dist' -czf dist/quantiva-${{ github.ref_name }}.tar.gz .
+          zip -r dist/quantiva-${{ github.ref_name }}.zip . -x ".git/*" "data/*" "reports/runs/*" "__pycache__/*" "*.pyc" "dist/*"
 
       - name: Extract changelog for tag
         id: notes
