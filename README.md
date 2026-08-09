@@ -15,6 +15,18 @@
 
 ---
 
+## 🖼 界面预览
+
+登录页 | 仪表盘
+--- | ---
+![登录页](docs/screenshots/ui_login.png) | ![仪表盘](docs/screenshots/ui_dashboard.png)
+
+行情图表 | 策略回测
+--- | ---
+![行情图表](docs/screenshots/ui_chart.png) | ![策略回测](docs/screenshots/ui_backtest.png)
+
+> 🌐 在线文档站：[tazz-zhu.github.io/quantiva](https://tazz-zhu.github.io/quantiva)
+
 ## 🖥️ Web 控制台
 
 ```powershell
