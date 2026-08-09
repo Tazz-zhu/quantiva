@@ -129,20 +129,36 @@ App.register("monitor", (() => {
     }
   }
 
+    function setTextIf(id, v) {
+    const el = document.getElementById(id);
+    if (el && el.textContent !== String(v)) el.textContent = String(v);
+  }
+  function setInputIf(id, v) {
+    const el = document.getElementById(id);
+    if (el && el.value !== String(v)) el.value = String(v);
+  }
   function renderStatus(d) {
     if (!d) return;
-    setText("mo-status", d.running ? "🟢 运行中" : "⚪ 已停止");
-    setText("mo-symbols", d.symbols.length + " 个");
-    setText("mo-scans", d.scan_count);
-    setText("mo-last", d.last_scan ? FMT.time(d.last_scan) : "--");
+    setTextIf("mo-status", d.running ? "🟢 运行中" : "⚪ 已停止");
+    setTextIf("mo-symbols", d.symbols.length + " 个");
+    setTextIf("mo-scans", d.scan_count);
+    setTextIf("mo-last", d.last_scan ? FMT.time(d.last_scan) : "--");
     const errBox = document.getElementById("mo-error");
-    if (errBox) errBox.textContent = d.source_error ? "[!] " + d.source_error : "";
-    document.getElementById("mo-interval").value = d.interval_sec;
-    document.getElementById("mo-vol").value = d.thresholds.volume_ratio;
-    document.getElementById("mo-p1h").value = (d.thresholds.price_1h * 100).toFixed(1);
-    document.getElementById("mo-p24").value = (d.thresholds.price_24h * 100).toFixed(1);
-    document.getElementById("mo-cooldown").value = d.thresholds.alert_cooldown_min;
+    if (errBox && errBox.textContent !== (d.source_error ? "[!] " + d.source_error : "")) errBox.textContent = d.source_error ? "[!] " + d.source_error : "";
+    setInputIf("mo-interval", d.interval_sec);
+    setInputIf("mo-vol", d.thresholds.volume_ratio);
+    setInputIf("mo-p1h", (d.thresholds.price_1h * 100).toFixed(1));
+    setInputIf("mo-p24", (d.thresholds.price_24h * 100).toFixed(1));
+    setInputIf("mo-cooldown", d.thresholds.alert_cooldown_min);
     renderMarkets(d.markets, d.thresholds);
+  }
+
+  // diff 单元格更新：值没变就不碰 DOM，避免每 2 秒强制重绘造成闪烁
+  function setCell(td, text, cls) {
+    const t = String(text);
+    if (td.textContent !== t) td.textContent = t;
+    const target = cls || "num";
+    if (td.className !== target) td.className = target;
   }
 
   // 增量更新行情表：只更新变化的单元格，避免整表重建闪烁
@@ -171,23 +187,22 @@ App.register("monitor", (() => {
       const c1 = m.change_1h, c24 = m.change_24h, vr = m.volume_ratio;
       const hot = (vr && vr >= thresholds.volume_ratio) || (c1 && Math.abs(c1) >= thresholds.price_1h);
       const symTd = tr.children[0];
-      symTd.textContent = m.symbol;
-      symTd.querySelectorAll(".badge").forEach((b) => b.remove());
-      if (hot) {
+      if (symTd.textContent !== m.symbol) symTd.textContent = m.symbol;
+      const hadBadge = !!symTd.querySelector(".badge");
+      if (hot && !hadBadge) {
         const sp = document.createElement("span");
         sp.className = "badge badge-amber";
         sp.textContent = "异动";
         symTd.appendChild(sp);
+      } else if (!hot && hadBadge) {
+        symTd.querySelectorAll(".badge").forEach((b) => b.remove());
       }
-      tr.children[1].textContent = FMT.price(m.price);
-      tr.children[2].textContent = FMT.pctSigned(c1);
-      tr.children[2].className = "num " + FMT.cls(c1);
-      tr.children[3].textContent = FMT.pctSigned(c24);
-      tr.children[3].className = "num " + FMT.cls(c24);
-      tr.children[4].textContent = FMT.num(m.volume, 0);
-      tr.children[5].textContent = vr ? vr.toFixed(1) + "x" : "--";
-      tr.children[5].className = "num " + (vr >= thresholds.volume_ratio ? "pos" : "");
-      tr.children[6].textContent = FMT.time(m.updated_at);
+      setCell(tr.children[1], FMT.price(m.price));
+      setCell(tr.children[2], FMT.pctSigned(c1), "num " + FMT.cls(c1));
+      setCell(tr.children[3], FMT.pctSigned(c24), "num " + FMT.cls(c24));
+      setCell(tr.children[4], FMT.num(m.volume, 0));
+      setCell(tr.children[5], vr ? vr.toFixed(1) + "x" : "--", "num " + (vr >= thresholds.volume_ratio ? "pos" : ""));
+      setCell(tr.children[6], FMT.time(m.updated_at));
     });
     Object.keys(rows).forEach((sym) => {
       if (!seen[sym] && rows[sym].parentNode) {
@@ -214,15 +229,21 @@ App.register("monitor", (() => {
       if (!el) return;
       const spans = el.querySelectorAll("span");
       if (spans.length < 3) return;
-      spans[0].textContent = ["🥇", "🥈", "🥉"][i] || String(i + 1);
-      spans[1].textContent = r.symbol.replace("/USDT", "");
-      spans[2].textContent = FMT.price(r.price);
+      const medal = ["🥇", "🥈", "🥉"][i] || String(i + 1);
+      const symbol = r.symbol.replace("/USDT", "");
+      const price = FMT.price(r.price);
+      if (spans[0].textContent !== medal) spans[0].textContent = medal;
+      if (spans[1].textContent !== symbol) spans[1].textContent = symbol;
+      if (spans[2].textContent !== price) spans[2].textContent = price;
       if (spans[3]) {
         if (mode === "vol") {
-          spans[3].textContent = FMT.num(r.volume_24h, 0);
+          const v = FMT.num(r.volume_24h, 0);
+          if (spans[3].textContent !== v) spans[3].textContent = v;
         } else {
-          spans[3].textContent = FMT.pctSigned(r.change_24h);
-          spans[3].className = FMT.cls(r.change_24h);
+          const v = FMT.pctSigned(r.change_24h);
+          const c = FMT.cls(r.change_24h);
+          if (spans[3].textContent !== v) spans[3].textContent = v;
+          if (spans[3].className !== c) spans[3].className = c;
         }
       }
     });

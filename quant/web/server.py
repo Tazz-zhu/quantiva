@@ -498,7 +498,7 @@ def create_app() -> FastAPI:
                             "rankings": state.monitor.rankings(),
                         }
                     yield "data: " + json.dumps(payload, ensure_ascii=False, default=str) + "\n\n"
-                    time.sleep(2.0)
+                    time.sleep(2.0 if scope == "live" else 4.0)
             except GeneratorExit:  # noqa: PERF203
                 return
 
