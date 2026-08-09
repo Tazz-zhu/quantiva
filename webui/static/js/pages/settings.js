@@ -125,19 +125,20 @@ App.register("settings", (() => {
               <div class="field"><label>模拟盘初始资金</label><input class="input" id="st-balance" type="number" value="${cfg.live.paper_initial_balance}"></div>
             </div>
             <div class="field"><label>数据库路径</label><input class="input" id="st-db" value="${cfg.data.storage_db}"></div>
+            <div class="field" style="margin-top:4px"><label>浏览器通知（回测/进化/异动）</label>
+              <select class="select" id="st-notify">
+                <option value="1">开启</option>
+                <option value="0">关闭</option>
+              </select>
+            </div>
+            <button class="btn btn-primary btn-block btn-run" id="st-save">💾 保存全部配置</button>
+            <button class="btn btn-block" id="st-reset-config" style="margin-top:8px">♻️ 恢复默认配置</button>
           </div>
-          <div class="field" style="margin-top:4px"><label>浏览器通知（回测/进化/异动）</label>
-            <select class="select" id="st-notify">
-              <option value="1">开启</option>
-              <option value="0">关闭</option>
-            </select>
-          </div>
-          <button class="btn btn-primary btn-block btn-run" id="st-save">💾 保存全部配置</button>
-          <button class="btn btn-block" id="st-reset-config" style="margin-top:8px">♻️ 恢复默认配置</button>
-        </div>
           <div class="card">
-            <div class="card-title">📋 当前配置预览</div>
-            <pre id="st-preview" style="font-family:var(--mono);font-size:12px;color:var(--text-dim);max-height:620px;overflow:auto;white-space:pre-wrap;background:rgba(0,0,0,0.25);padding:16px;border-radius:10px">${JSON.stringify(cfg, null, 2)}</pre>
+            <details class="settings-details" open>
+              <summary>📋 当前配置预览（点击折叠）</summary>
+              <pre id="st-preview" style="font-family:var(--mono);font-size:11.5px;color:var(--text-dim);max-height:280px;overflow:auto;white-space:pre-wrap;background:rgba(0,0,0,0.25);padding:12px;border-radius:10px">${JSON.stringify(cfg, null, 2)}</pre>
+            </details>
           </div>
       </div>
     `;
