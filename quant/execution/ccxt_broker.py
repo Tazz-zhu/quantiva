@@ -15,20 +15,25 @@ class CCXTBroker(Broker):
         exchange_id: str = "binance",
         api_key: str | None = None,
         api_secret: str | None = None,
+        api_passphrase: str | None = None,
         sandbox: bool = False,
     ):
         if not hasattr(ccxt, exchange_id):
             raise ValueError("不支持的交易所: " + exchange_id)
         key = api_key or os.getenv("CCXT_API_KEY")
         secret = api_secret or os.getenv("CCXT_API_SECRET")
+        passphrase = api_passphrase or os.getenv("CCXT_API_PASSPHRASE") or os.getenv("CCXT_PASSWORD") or ""
         if not key or not secret:
-            raise ValueError("缺少 API 密钥：请设置环境变量 CCXT_API_KEY / CCXT_API_SECRET")
-        self.exchange = getattr(ccxt, exchange_id)({
+            raise ValueError("缺少 API 密钥：请设置环境变量 CCXT_API_KEY / CCXT_API_SECRET（OKX 还需 CCXT_API_PASSPHRASE 口令）")
+        params = {
             "apiKey": key,
             "secret": secret,
             "enableRateLimit": True,
             "sandbox": sandbox,
-        })
+        }
+        if passphrase:
+            params["password"] = passphrase
+        self.exchange = getattr(ccxt, exchange_id)(params)
         self.exchange.load_markets()
         self.exec_quality: dict = {
             "orders": 0, "fills": 0, "rejects": 0,

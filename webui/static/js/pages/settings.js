@@ -30,9 +30,10 @@ App.register("settings", (() => {
                 <option value="true" ${cfg.exchange.sandbox ? "selected" : ""}>是</option>
               </select>
             </div>
-            <div class="input-row">
+            <div class="input-row-3">
               <div class="field"><label>API Key（测试用）</label><input class="input" id="st-api-key" placeholder="可选"></div>
               <div class="field"><label>API Secret（测试用）</label><input class="input" id="st-api-secret" placeholder="可选"></div>
+              <div class="field"><label>API Passphrase（OKX 必填）</label><input class="input" id="st-api-pass" type="password" placeholder="OKX 创建 API Key 时的口令"></div>
             </div>
             <button class="btn btn-sm" id="st-ex-test">🔌 测试交易所连接</button>
             <span id="st-ex-result" style="font-size:12px;margin-left:8px"></span>
@@ -184,6 +185,7 @@ App.register("settings", (() => {
         exchange_id: document.getElementById("st-exchange").value,
         api_key: document.getElementById("st-api-key").value.trim(),
         api_secret: document.getElementById("st-api-secret").value.trim(),
+        api_passphrase: document.getElementById("st-api-pass").value.trim(),
       });
       result.textContent = res.ok ? "✅ " + res.detail : "❌ " + res.detail;
       result.style.color = res.ok ? "var(--green)" : "var(--red)";

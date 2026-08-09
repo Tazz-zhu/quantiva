@@ -126,7 +126,8 @@ ai:
   base_url: https://api.deepseek.com/v1
   model: deepseek-chat
 ```
-环境变量：`CCXT_API_KEY` / `CCXT_API_SECRET`（OKX API Key）、`DEEPSEEK_API_KEY`。
+环境变量：`CCXT_API_KEY` / `CCXT_API_SECRET` / `CCXT_API_PASSPHRASE`（OKX API v5 必须含口令）、`DEEPSEEK_API_KEY`。
+也可以把密钥写入项目根目录 `.env`（参考 `.env.example`），启动时会自动加载（不会覆盖系统环境变量）。
 
 ---
 

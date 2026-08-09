@@ -1,7 +1,7 @@
 ﻿# Quantiva 配置文件（所有参数均有默认值，可只保留需要覆盖的项）
 
 exchange:
-  id: binance          # ccxt 交易所标识：binance / okx / bybit / gateio / bitget
+  id: okx          # ccxt 交易所标识：binance / okx / bybit / gateio / bitget
   sandbox: false       # 是否使用测试网
 
 data:

@@ -1,5 +1,5 @@
 exchange:
-  id: binance
+  id: okx
   sandbox: false
 data:
   symbol: BTC/USDT
@@ -46,6 +46,7 @@ ai:
   base_url: https://api.openai.com/v1
   model: gpt-4o-mini
   temperature: 0.4
+  api_key: ''
 monitor:
   enabled: true
   interval_sec: 30
@@ -88,6 +89,6 @@ deployment:
 community:
   enabled: true
   qq_url: ''
-  qq_group: "894777902"
+  qq_group: '894777902'
   wechat_url: ''
-  wechat_qr: "/static/community/wechat.png"
+  wechat_qr: /static/community/wechat.png

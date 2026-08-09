@@ -6,6 +6,13 @@ import argparse
 import sys
 from pathlib import Path
 
+# 支持从项目根目录 .env 读取密钥（可选，不覆盖系统环境变量）
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+except Exception:  # noqa: BLE001
+    pass
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 

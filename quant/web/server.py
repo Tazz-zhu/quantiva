@@ -2,9 +2,16 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+except Exception:  # noqa: BLE001
+    pass
 
 import ccxt
 import pandas as pd
@@ -890,16 +897,19 @@ def create_app() -> FastAPI:
         exchange_id = body.get("exchange_id") or state.config["exchange"]["id"]
         api_key = body.get("api_key") or ""
         api_secret = body.get("api_secret") or ""
+        api_passphrase = body.get("api_passphrase") or os.getenv("CCXT_API_PASSPHRASE") or os.getenv("CCXT_PASSWORD") or ""
         try:
             ex_cls = getattr(ccxt, exchange_id)
             ex = ex_cls({"enableRateLimit": True, "timeout": 8000})
             t = ex.fetch_ticker("BTC/USDT")
             public_ok = t.get("last") is not None
             detail = "公开行情连接成功（BTC/USDT 最新价 " + str(t.get("last")) + "）"
+            if exchange_id == "okx" and not api_passphrase:
+                detail += "；提示：OKX 私密接口需要口令（passphrase），请填写 API Passphrase"
             balance_ok = None
             if api_key and api_secret:
                 try:
-                    ex2 = ex_cls({"apiKey": api_key, "secret": api_secret, "enableRateLimit": True, "timeout": 8000})
+                    ex2 = ex_cls({"apiKey": api_key, "secret": api_secret, "enableRateLimit": True, "timeout": 8000, **({"password": api_passphrase} if api_passphrase else {})})
                     bal = ex2.fetch_balance()
                     totals = {k: v for k, v in (bal.get("total") or {}).items() if v}
                     balance_ok = True
