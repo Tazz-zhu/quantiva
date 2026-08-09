@@ -88,6 +88,6 @@ deployment:
 community:
   enabled: true
   qq_url: ''
-  qq_group: ''
+  qq_group: "894777902"
   wechat_url: ''
-  wechat_qr: ''
+  wechat_qr: "/static/community/wechat.png"
