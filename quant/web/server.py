@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -46,6 +47,7 @@ state = AppState(CONFIG_PATH)
 APP_VERSION = "1.4.0"
 
 _ticker_cache: dict = {"ts": 0.0, "data": {}}
+_account_cache: dict = {"ts": 0.0, "data": None}
 
 # 登录防爆破：按 用户名|IP 记录失败次数，5 次失败锁定 15 分钟
 MAX_LOGIN_FAILS = 5
@@ -66,6 +68,74 @@ def _check_login_lock(key: str) -> None:
         remain = int((rec["locked_until"] - time.time()) / 60) + 1
         raise HTTPException(status_code=403, detail="尝试次数过多，已锁定 " + str(remain) + " 分钟，请稍后再试")
     _login_attempts.pop(key, None)
+
+
+def _fetch_account() -> dict:
+    """读取交易所真实账户：余额 / 持仓 / USD 估值（密钥来自 .env 或环境变量）。"""
+    try:
+        key = os.getenv("CCXT_API_KEY") or ""
+        secret = os.getenv("CCXT_API_SECRET") or ""
+        passphrase = os.getenv("CCXT_API_PASSPHRASE") or os.getenv("CCXT_PASSWORD") or ""
+        if not key or not secret:
+            return {"ok": False, "reason": "no_keys", "message": "未配置交易所密钥（请写入项目根目录 .env）"}
+        proxy = exchange_proxy(state.config)
+        params = {
+            "apiKey": key,
+            "secret": secret,
+            "enableRateLimit": True,
+            "timeout": 12000,
+            "sandbox": bool(state.config.get("exchange", {}).get("sandbox", False)),
+        }
+        if passphrase:
+            params["password"] = passphrase
+        if proxy:
+            params["proxies"] = {"http": proxy, "https": proxy}
+        ex = getattr(ccxt, state.config["exchange"]["id"])(params)
+        bal = ex.fetch_balance()
+        totals = {k: float(v) for k, v in (bal.get("total") or {}).items() if v}
+        free = {k: float(v) for k, v in (bal.get("free") or {}).items() if v}
+        usdt = float(totals.get("USDT", 0) or 0)
+        estimate = usdt
+        coins = []
+        for sym, amount in totals.items():
+            if sym == "USDT":
+                continue
+            try:
+                t = ex.fetch_ticker(sym + "/USDT")
+                px = float(t.get("last") or 0)
+                estimate += px * amount
+                coins.append({"coin": sym, "amount": round(amount, 8), "price": px, "value_usd": round(px * amount, 2)})
+            except Exception:  # noqa: BLE001
+                coins.append({"coin": sym, "amount": round(amount, 8), "price": None, "value_usd": None})
+        positions = []
+        try:
+            for p in (ex.fetch_positions() or []):
+                sym = p.get("symbol")
+                if not sym:
+                    continue
+                positions.append({
+                    "symbol": sym,
+                    "side": p.get("side"),
+                    "contracts": p.get("contracts"),
+                    "notional": p.get("notional"),
+                    "entry_price": p.get("entryPrice"),
+                    "mark_price": p.get("markPrice"),
+                    "unrealized_pnl": p.get("unrealizedPnl"),
+                })
+        except Exception:  # noqa: BLE001
+            pass
+        return {
+            "ok": True,
+            "exchange": state.config["exchange"]["id"],
+            "sandbox": bool(state.config.get("exchange", {}).get("sandbox", False)),
+            "total_usdt": round(estimate, 2),
+            "free_usdt": round(float(free.get("USDT", 0) or 0), 2),
+            "balances": coins,
+            "positions": positions,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "reason": "error", "message": str(exc)[:200]}
 
 
 def _masked(value: str) -> bool:
@@ -488,6 +558,16 @@ def create_app() -> FastAPI:
         result = _fetch_tickers(syms, state.config["exchange"]["id"])
         _ticker_cache.update({"ts": now, "data": result})
         return result
+
+    # ---------------- 交易所真实账户 ----------------
+    @app.get("/api/account/status")
+    def account_status(force: bool = Query(False)):
+        now = time.time()
+        if not force and _account_cache["data"] and now - _account_cache["ts"] < 30:
+            return _account_cache["data"]
+        data = _fetch_account()
+        _account_cache.update({"ts": now, "data": data})
+        return data
 
     # ---------------- 实时推送（SSE） ----------------
     @app.get("/api/stream")

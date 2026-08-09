@@ -21,10 +21,12 @@ App.register("dashboard", (() => {
           <span style="align-self:center">建议流程：先看行情 → 经典策略回测 → 参数优化 → 模拟盘验证 → 再考虑实盘</span>
         </div>
       </div>
-      <div class="section-title">实时行情</div>
+      <div class="section-title">实时行情（OKX）</div>
       <div class="grid grid-4" id="dash-tickers">
         ${tickerSkeleton("BTC/USDT")}${tickerSkeleton("ETH/USDT")}${tickerSkeleton("SOL/USDT")}${tickerSkeleton("BNB/USDT")}
       </div>
+      <div class="section-title">我的交易所账户</div>
+      <div id="dash-account"><div class="loading"><div class="spinner"></div>正在读取 OKX 账户…</div></div>
       <div class="grid grid-2" style="margin-top:16px">
         <div class="card">
           <div class="card-title"><span>最新回测 · 权益曲线</span><span class="badge badge-blue" id="dash-equity-label">加载中…</span></div>
@@ -72,6 +74,42 @@ App.register("dashboard", (() => {
     refreshTickers();
     refreshRuns();
     refreshLive();
+    refreshAccount();
+  }
+
+  let lastAccountFetch = 0;
+  function acctStat(label, value, foot) {
+    return '<div class="card stat-card hover"><div class="stat-label">' + label + '</div><div class="stat-value sm">' + value + '</div><div class="stat-foot">' + foot + '</div></div>';
+  }
+  async function refreshAccount() {
+    const now = Date.now();
+    if (now - lastAccountFetch < 30000) return;
+    lastAccountFetch = now;
+    const box = document.getElementById("dash-account");
+    if (!box) return;
+    try {
+      const a = await API.get("/api/account/status");
+      if (!a.ok) {
+        box.innerHTML = '<div class="card"><div class="empty">' + (a.message || "未连接交易所") + '<br><span style="font-size:11px">请在项目根目录 .env 配置 CCXT_API_KEY / SECRET / PASSPHRASE 后重启服务</span></div></div>';
+        return;
+      }
+      const src = a.sandbox ? "OKX 模拟盘" : "OKX 实盘";
+      const balRows = (a.balances && a.balances.length ? a.balances.map((c) => '<tr><td>' + c.coin + '</td><td class="num">' + c.amount + '</td><td class="num">' + (c.price ? FMT.price(c.price) : "--") + '</td><td class="num">' + (c.value_usd !== null && c.value_usd !== undefined ? FMT.usd(c.value_usd) : "--") + '</td></tr>').join("") : '<tr><td colspan="4" style="text-align:center;color:var(--text-faint)">除 USDT 外暂无其他币种</td></tr>');
+      const posRows = (a.positions && a.positions.length ? a.positions.map((p) => '<tr><td>' + p.symbol + '</td><td>' + (p.side || "-") + '</td><td class="num">' + (p.contracts ?? "--") + '</td><td class="num">' + (p.entry_price ? FMT.price(p.entry_price) : "--") + '</td><td class="num">' + (p.mark_price ? FMT.price(p.mark_price) : "--") + '</td><td class="num ' + FMT.cls(p.unrealized_pnl) + '">' + (p.unrealized_pnl !== null && p.unrealized_pnl !== undefined ? FMT.usd(p.unrealized_pnl) : "--") + '</td></tr>').join("") : '<tr><td colspan="6" style="text-align:center;color:var(--text-faint)">无持仓</td></tr>');
+      box.innerHTML = '<div class="grid grid-4">'
+        + acctStat("总权益（USD 估算）", FMT.usd(a.total_usdt), src)
+        + acctStat("可用 USDT", FMT.usd(a.free_usdt), "可交易余额")
+        + acctStat("资产币种", (a.balances || []).length + " 种", "含 USDT")
+        + acctStat("持仓数", (a.positions || []).length + " 个", "实时")
+        + '</div>'
+        + '<div class="grid grid-2" style="margin-top:14px">'
+        + '<div class="card"><div class="card-title">资产余额 <span class="badge badge-blue">' + src + '</span></div><div class="table-wrap" style="max-height:220px"><table class="table"><thead><tr><th>币种</th><th class="num">数量</th><th class="num">价格</th><th class="num">估值(USD)</th></tr></thead><tbody>' + balRows + '</tbody></table></div></div>'
+        + '<div class="card"><div class="card-title">持仓 <span class="badge badge-blue">' + src + '</span></div><div class="table-wrap" style="max-height:220px"><table class="table"><thead><tr><th>合约</th><th>方向</th><th class="num">数量</th><th class="num">开仓价</th><th class="num">标记价</th><th class="num">未实现盈亏</th></tr></thead><tbody>' + posRows + '</tbody></table></div></div>'
+        + '</div>'
+        + '<div style="margin-top:8px;font-size:11px;color:var(--text-faint)">数据来源：' + src + ' · 更新于 ' + FMT.time(a.updated_at) + '（每 30 秒自动刷新）</div>';
+    } catch (e) {
+      box.innerHTML = '<div class="card"><div class="empty">账户获取失败：' + e.message + '</div></div>';
+    }
   }
 
   async function refreshStats() {
