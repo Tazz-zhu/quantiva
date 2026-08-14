@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 
 from quant.config import exchange_proxy, load_config
-from quant.data.fetcher import ExchangeDataFetcher, TIMEFRAME_NANOS, generate_synthetic_ohlcv, to_pandas_freq
+from quant.data.fetcher import ExchangeDataFetcher, TIMEFRAME_NANOS, to_pandas_freq
 from quant.data.indicators import bollinger, macd, rsi, sma
 from quant.data.storage import SQLiteStorage
 from quant.report.html_report import generate_html_report
@@ -241,27 +241,28 @@ def _load_ohlcv(symbol: str, timeframe: str, limit: int, source: str) -> tuple[p
     freq_sec = pd.tseries.frequencies.to_offset(to_pandas_freq(timeframe)).nanos / 1e9
     days = max(30, int(limit * freq_sec / 86400 * 1.6))
     if source == "synthetic":
-        return generate_synthetic_ohlcv(timeframe=timeframe, days=days).tail(limit), "synthetic"
-    storage = SQLiteStorage(state.config["data"]["storage_db"])
-    df = storage.load_ohlcv(symbol, timeframe)
-    storage.close()
-    if source == "db":
-        if df.empty:
-            raise HTTPException(status_code=404, detail="本地数据库没有 " + symbol + " " + timeframe + " 数据")
-        return df.tail(limit), "db"
-    if len(df) >= min(limit, 300):
-        return df.tail(limit), "db"
+        raise HTTPException(status_code=400, detail="合成数据已停用，系统仅使用交易所真实行情")
+    # 行情只来自交易所真实数据；本地 SQLite 仅作内部缓存，不再作为独立“数据源”暴露
     try:
         fetcher = ExchangeDataFetcher(state.config["exchange"]["id"], proxy=exchange_proxy(state.config))
         df = fetcher.fetch_ohlcv_paginated(symbol, timeframe, days=days)
+        if df.empty:
+            raise RuntimeError("交易所未返回数据")
         storage = SQLiteStorage(state.config["data"]["storage_db"])
         storage.save_ohlcv(symbol, timeframe, df)
         storage.close()
         return df.tail(limit), "exchange"
     except Exception as exc:  # noqa: BLE001
-        if source == "exchange":
+        # 交易所不可达时回退到缓存（缓存同样来自交易所真实数据）
+        try:
+            storage = SQLiteStorage(state.config["data"]["storage_db"])
+            df = storage.load_ohlcv(symbol, timeframe)
+            storage.close()
+        except Exception:
+            df = pd.DataFrame()
+        if df.empty:
             raise HTTPException(status_code=502, detail="交易所数据获取失败: " + str(exc)) from exc
-        return generate_synthetic_ohlcv(timeframe=timeframe, days=days).tail(limit), "synthetic-fallback"
+        return df.tail(limit), "exchange"
 
 
 def _fetch_tickers(symbols: list[str], exchange_id: str) -> dict:
@@ -380,6 +381,9 @@ def create_app() -> FastAPI:
             "ma_cross": {"fast": 20, "slow": 50, "direction": "long_only"},
             "rsi_reversion": {"period": 14, "oversold": 30, "overbought": 70},
             "bollinger": {"period": 20, "num_std": 2.0},
+            "trend_flow": {"fast_ma": 20, "slow_ma": 100, "entry_lookback": 10,
+                           "exit_atr_mult": 2.0, "min_atr_pct": 0.0, "min_adx": 20.0,
+                           "direction": "long_short"},
         }
         return defaults.get(name, {})
 
@@ -606,25 +610,21 @@ def create_app() -> FastAPI:
         symbol = body.get("symbol", "BTC/USDT")
         timeframe = body.get("timeframe", "1h")
         days = int(body.get("days", 730))
-        synthetic = bool(body.get("synthetic", False))
-        if synthetic:
-            df = generate_synthetic_ohlcv(timeframe=timeframe, days=days, seed=int(body.get("seed", 42)))
-        else:
-            try:
-                fetcher = ExchangeDataFetcher(state.config["exchange"]["id"], proxy=exchange_proxy(state.config))
-                df = fetcher.fetch_ohlcv_paginated(symbol, timeframe, days=days)
-            except Exception as exc:  # noqa: BLE001
-                raise HTTPException(status_code=502, detail="交易所数据获取失败: " + str(exc)) from exc
+        try:
+            fetcher = ExchangeDataFetcher(state.config["exchange"]["id"], proxy=exchange_proxy(state.config))
+            df = fetcher.fetch_ohlcv_paginated(symbol, timeframe, days=days)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail="交易所数据获取失败: " + str(exc)) from exc
         if df.empty:
             raise HTTPException(status_code=404, detail="未获取到任何数据")
         storage = SQLiteStorage(state.config["data"]["storage_db"])
         n = storage.save_ohlcv(symbol, timeframe, df)
         storage.close()
-        return {"ok": True, "symbol": symbol, "timeframe": timeframe, "rows": n, "first": str(df.index[0]), "last": str(df.index[-1]), "source": "synthetic" if synthetic else "exchange"}
+        return {"ok": True, "symbol": symbol, "timeframe": timeframe, "rows": n, "first": str(df.index[0]), "last": str(df.index[-1]), "source": "exchange"}
 
     @app.delete("/api/data")
     def data_delete(symbol: str = Query(...), timeframe: str = Query(...)):
-        """删除指定标的+周期的本地数据（操作留审计）。"""
+        """删除指定标的+周期的行情缓存数据（操作留审计）。"""
         storage = SQLiteStorage(state.config["data"]["storage_db"])
         try:
             cur = storage.conn.execute(
@@ -635,7 +635,7 @@ def create_app() -> FastAPI:
         finally:
             storage.close()
         if n <= 0:
-            raise HTTPException(status_code=404, detail="本地数据库中没有 " + symbol + " " + timeframe + " 数据")
+            raise HTTPException(status_code=404, detail="行情缓存中没有 " + symbol + " " + timeframe + " 数据")
         return {"ok": True, "deleted": n, "symbol": symbol, "timeframe": timeframe}
 
     @app.get("/api/data/stats")
@@ -842,12 +842,12 @@ def create_app() -> FastAPI:
             "mode": mode,
             "symbol": sess.get("symbol", "BTC/USDT"),
             "timeframe": sess.get("timeframe", "1h"),
-            "data_source": sess.get("data_source", "synthetic"),
+            "data_source": sess.get("data_source", "exchange"),
             "poll_interval_sec": sess.get("poll_interval_sec", 60),
             "warmup_bars": sess.get("warmup_bars", 200),
             "paper_initial_balance": sess.get("paper_initial_balance", 10000),
             "seed": sess.get("seed", 7),
-            "strategy": sess.get("strategy") or {"name": "ma_cross", "params": {}},
+            "strategy": sess.get("strategy") or {"name": "trend_flow", "params": {"fast_ma": 20, "slow_ma": 100, "entry_lookback": 10, "exit_atr_mult": 2.0, "min_atr_pct": 0.0, "min_adx": 20.0, "direction": "long_short"}},
             "risk": sess.get("risk") or {},
             "confirm_live": mode == "live",
         }

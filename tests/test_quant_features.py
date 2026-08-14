@@ -11,7 +11,8 @@ import numpy as np
 import pandas as pd
 
 from quant.backtest.engine import BacktestEngine
-from quant.data.fetcher import generate_synthetic_ohlcv
+from fixture_loader import load_real_ohlcv
+from quant.data.storage import SQLiteStorage
 from quant.evolution.optimizer import Optimizer
 from quant.monitor.service import MarketMonitor
 from quant.report.analysis import analyze
@@ -31,16 +32,8 @@ class AlwaysLong(Strategy):
 
 
 def fixture_df(n=300, start=100.0, seed=42):
-    idx = pd.date_range(end=pd.Timestamp.now(tz="UTC").floor("1h"), periods=n, freq="1h")
-    rng = np.random.default_rng(seed)
-    close = pd.Series(start * np.cumprod(1.0 + rng.normal(0.0002, 0.01, n)), index=idx)
-    return pd.DataFrame({
-        "open": close.shift(1).fillna(close),
-        "high": close * 1.004,
-        "low": close * 0.996,
-        "close": close,
-        "volume": 1000.0,
-    }, index=idx)
+    # 使用交易所真实 K 线 fixture（OKX BTC/USDT 1h）
+    return load_real_ohlcv("1h", n=n)
 
 
 class TestQuantFeatures(unittest.TestCase):
@@ -109,7 +102,7 @@ class TestQuantFeatures(unittest.TestCase):
         df.loc[df.index[60]:, "high"] = 101.0
         engine = BacktestEngine(
             strategy=AlwaysLong(), data=df, initial_capital=10000, fee_rate=0.0, slippage=0.0,
-            risk=RiskManager(max_position_pct=0.5, leverage=20),
+            risk=RiskManager(max_position_pct=0.5, leverage=20, atr_stop_mult=0.0),
         )
         result = engine.run()
         reasons = [t.reason for t in result.trades]
@@ -117,19 +110,24 @@ class TestQuantFeatures(unittest.TestCase):
         self.assertGreater(result.metrics["final_equity"], -1e-6)
 
     def test_optimizer_holdout_and_min_trades(self):
-        opt = Optimizer("config/config.yaml")
-        res = opt.run(
-            "ma_cross",
-            {"fast": [10, 30], "slow": [30, 60]},
-            {"source": "synthetic", "symbol": "BTC/USDT", "timeframe": "1h", "days": 150, "seed": 42},
-            risk_cfg={"max_position_pct": 0.5},
-            target="sharpe", max_combos=4, workers=2, holdout_ratio=0.25, min_trades=2,
-        )
-        self.assertIn("oos_metrics", res)
-        self.assertIn("in_sample_metrics", res)
-        self.assertAlmostEqual(res["holdout_ratio"], 0.25)
-        if res["oos_metrics"] is not None:
-            self.assertIn("sharpe", res["oos_metrics"])
+        with tempfile.TemporaryDirectory() as tmp:
+            db = str(Path(tmp) / "ohlcv.db")
+            storage = SQLiteStorage(db)
+            storage.save_ohlcv("BTC/USDT", "1h", load_real_ohlcv("1h", n=400))
+            storage.close()
+            opt = Optimizer("config/config.yaml")
+            res = opt.run(
+                "ma_cross",
+                {"fast": [10, 30], "slow": [30, 60]},
+                {"source": "db", "symbol": "BTC/USDT", "timeframe": "1h", "days": 150, "seed": 42, "storage_db": db},
+                risk_cfg={"max_position_pct": 0.5},
+                target="sharpe", max_combos=4, workers=2, holdout_ratio=0.25, min_trades=2,
+            )
+            self.assertIn("oos_metrics", res)
+            self.assertIn("in_sample_metrics", res)
+            self.assertAlmostEqual(res["holdout_ratio"], 0.25)
+            if res["oos_metrics"] is not None:
+                self.assertIn("sharpe", res["oos_metrics"])
 
     def test_monthly_consistency_and_r(self):
         df = fixture_df(600)

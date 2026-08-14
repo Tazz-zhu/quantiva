@@ -32,9 +32,7 @@ App.register("backtest", (() => {
             <div class="card-title">📡 数据</div>
             <div class="field"><label>数据源</label>
               <select class="select" id="bt-source">
-                <option value="synthetic">合成数据（离线可用）</option>
-                <option value="auto">自动（交易所优先）</option>
-                <option value="db">本地数据库</option>
+                <option value="auto">交易所真实行情</option>
               </select>
             </div>
             <div class="input-row">
@@ -45,7 +43,7 @@ App.register("backtest", (() => {
             </div>
             <div class="input-row">
               <div class="field"><label>回看天数</label><input class="input" id="bt-days" type="number" value="365"></div>
-              <div class="field"><label>随机种子</label><input class="input" id="bt-seed" type="number" value="42"></div>
+              
             </div>
           </div>
           <div class="card">
@@ -280,7 +278,7 @@ App.register("backtest", (() => {
   }
 
   function dataParams() {
-    return { source: document.getElementById("bt-source").value, symbol: document.getElementById("bt-symbol").value.trim(), timeframe: document.getElementById("bt-timeframe").value, days: parseInt(document.getElementById("bt-days").value) || 365, seed: parseInt(document.getElementById("bt-seed").value) || 42 };
+    return { source: document.getElementById("bt-source").value, symbol: document.getElementById("bt-symbol").value.trim(), timeframe: document.getElementById("bt-timeframe").value, days: parseInt(document.getElementById("bt-days").value) || 365 };
   }
   function riskParams(direction) {
     return { max_position_pct: parseFloat(document.getElementById("bt-pos-pct").value) || 0.5, leverage: parseFloat(document.getElementById("bt-leverage").value) || 1, atr_stop_mult: parseFloat(document.getElementById("bt-atr").value) || 2, stop_loss_pct: parseFloat(document.getElementById("bt-stop").value) || null, take_profit_pct: parseFloat(document.getElementById("bt-tp").value) || null, risk_per_trade_pct: parseFloat(document.getElementById("bt-risk-pct").value) || 0, trailing_stop_mult: parseFloat(document.getElementById("bt-trail-atr").value) || 0, break_even_after_mult: parseFloat(document.getElementById("bt-be-atr").value) || 0, max_drawdown_pct: parseFloat(document.getElementById("bt-dd-pct").value) || null, trade_direction: direction };
@@ -406,7 +404,7 @@ App.register("backtest", (() => {
       <div class="badge-row">
         <span class="badge badge-blue">${stratLabel}</span>
         <span class="badge badge-gray">${r.symbol} ${r.timeframe}</span>
-        <span class="badge badge-gray">${r.source === "synthetic" ? "合成数据" : r.source}</span>
+        <span class="badge badge-gray">${({auto:"交易所",db:"交易所",exchange:"OKX"}[r.source] || r.source)}</span>
         <span class="badge ${m.total_return >= m.buy_hold_return ? "badge-green" : "badge-red"}">${m.total_return >= m.buy_hold_return ? "跑赢" : "跑输"}买入持有</span>
       </div>
       <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
@@ -489,7 +487,7 @@ App.register("backtest", (() => {
   }
   function applyTemplatePayload(t) {
     const applyVal = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined && v !== null) el.value = v; };
-    if (t.data) { applyVal("bt-source", t.data.source); applyVal("bt-symbol", t.data.symbol); applyVal("bt-timeframe", t.data.timeframe); applyVal("bt-days", t.data.days); applyVal("bt-seed", t.data.seed); }
+    if (t.data) { applyVal("bt-source", t.data.source); applyVal("bt-symbol", t.data.symbol); applyVal("bt-timeframe", t.data.timeframe); applyVal("bt-days", t.data.days); }
     if (t.risk) {
       applyVal("bt-pos-pct", t.risk.max_position_pct); applyVal("bt-leverage", t.risk.leverage);
       applyVal("bt-atr", t.risk.atr_stop_mult); applyVal("bt-stop", t.risk.stop_loss_pct || ""); applyVal("bt-tp", t.risk.take_profit_pct || "");

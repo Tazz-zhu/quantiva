@@ -10,6 +10,7 @@ from quant.strategy.macd_cross import MACDCrossStrategy
 from quant.strategy.momentum import MomentumBreakoutStrategy
 from quant.strategy.grid import GridStrategy
 from quant.strategy.triple_screen import TripleScreenStrategy
+from quant.strategy.trend_flow import TrendFlowStrategy
 
 STRATEGIES = {
     cls.name: cls
@@ -24,6 +25,7 @@ STRATEGIES = {
         MomentumBreakoutStrategy,
         GridStrategy,
         TripleScreenStrategy,
+        TrendFlowStrategy,
     )
 }
 

@@ -44,12 +44,16 @@ class CCXTBroker(Broker):
         }
 
     def get_balance(self) -> dict:
+        """???????ccxt fetch_balance ???? 'USDT' ?? dict?????? 'total'/'free'/'used'?
+
+        ???????? {"free": ..., "used": ..., "total": ...} ????????????? dict ?????
+        """
         bal = self.exchange.fetch_balance()
-        return {
-            k: float(v["free"])
-            for k, v in bal.get("total", {}).items()
-            if v and v.get("free")
-        }
+        out: dict[str, float] = {}
+        for k, v in bal.items():
+            if isinstance(v, dict) and isinstance(v.get("free"), (int, float)):
+                out[str(k)] = float(v["free"])
+        return out
 
     def get_ticker(self, symbol: str) -> dict:
         t = self.exchange.fetch_ticker(symbol)

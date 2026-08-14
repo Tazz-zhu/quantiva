@@ -73,6 +73,23 @@ def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     return tr.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean()
 
 
+def adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """Wilder ADX ???????0-100?>20-25 ??????????"""
+    high = df["high"].astype(float)
+    low = df["low"].astype(float)
+    close = df["close"].astype(float)
+    up = high.diff()
+    down = -low.diff()
+    plus_dm = pd.Series(np.where((up > down) & (up > 0), up, 0.0), index=df.index)
+    minus_dm = pd.Series(np.where((down > up) & (down > 0), down, 0.0), index=df.index)
+    tr = true_range(df)
+    atr_s = tr.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean()
+    plus_di = 100.0 * plus_dm.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean() / atr_s.replace(0.0, np.nan)
+    minus_di = 100.0 * minus_dm.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean() / atr_s.replace(0.0, np.nan)
+    dx = 100.0 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0.0, np.nan)
+    return dx.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean()
+
+
 def donchian(df: pd.DataFrame, period: int = 20) -> tuple[pd.Series, pd.Series]:
     """???????? (??, ??)?"""
     upper = df["high"].rolling(window=period, min_periods=period).max()

@@ -127,7 +127,7 @@ App.register("settings", (() => {
               <div class="field"><label>轮询间隔（秒）</label><input class="input" id="st-poll" type="number" value="${cfg.live.poll_interval_sec}"></div>
               <div class="field"><label>模拟盘初始资金</label><input class="input" id="st-balance" type="number" value="${cfg.live.paper_initial_balance}"></div>
             </div>
-            <div class="field"><label>数据库路径</label><input class="input" id="st-db" value="${cfg.data.storage_db}"></div>
+            <div class="field"><label>行情缓存路径（内部）</label><input class="input" id="st-db" value="${cfg.data.storage_db}"></div>
             <div class="field" style="margin-top:4px"><label>浏览器通知（回测/进化/异动）</label>
               <select class="select" id="st-notify">
                 <option value="1">开启</option>

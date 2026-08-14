@@ -2,14 +2,14 @@
 import unittest
 
 from quant.backtest.engine import BacktestEngine
-from quant.data.fetcher import generate_synthetic_ohlcv
+from fixture_loader import load_real_ohlcv
 from quant.risk.manager import RiskManager
 from quant.strategy import create_strategy
 
 
 class TestBacktest(unittest.TestCase):
     def setUp(self):
-        self.data = generate_synthetic_ohlcv(timeframe="1h", days=200, seed=7)
+        self.data = load_real_ohlcv("1h", n=600)
 
     def test_ma_cross_runs(self):
         strategy = create_strategy("ma_cross", {"fast": 10, "slow": 30, "direction": "long_only"})
@@ -44,7 +44,7 @@ class TestBacktest(unittest.TestCase):
         self.assertTrue((result.positions >= 0).all())
 
     def test_stop_loss_limits_losses(self):
-        data = generate_synthetic_ohlcv(timeframe="1h", days=100, seed=3)
+        data = load_real_ohlcv("1h", n=300)
         strategy = create_strategy("ma_cross", {"fast": 10, "slow": 30})
         engine = BacktestEngine(
             strategy, data,

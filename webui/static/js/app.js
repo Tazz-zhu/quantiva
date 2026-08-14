@@ -14,6 +14,7 @@ window.App = (() => {
   }
 
   function register(name, module) { pages[name] = module; }
+  const renderedPages = {};
 
   function go(name) {
     if (!pages[name]) return;
@@ -22,15 +23,18 @@ window.App = (() => {
     document.querySelectorAll(".page").forEach((s) => s.classList.toggle("active", s.id === "page-" + name));
     document.getElementById("page-title").textContent = titles[name] || name;
     document.title = "Quantiva · " + (titles[name] || name);
-    if (pages[name].render) pages[name].render();
+    // 页面只渲染一次，切走再回来时保留原页面状态（后台任务/图表不重新启动）
+    if (!renderedPages[name] && pages[name].render) {
+      pages[name].render();
+      renderedPages[name] = true;
+    }
     if (pages[name].refresh) pages[name].refresh();
     const scope = STREAM_SCOPES[name];
     if (scope) {
-      startStream(scope, (data) => {
+      // 实盘/监控流常驻后台，不因切换页面而断开
+      ensureStream(scope, (data) => {
         if (pages[name] && pages[name].onStream) pages[name].onStream(data);
       });
-    } else {
-      stopStream();
     }
     autoTips();
     professionalize();
@@ -120,28 +124,34 @@ window.App = (() => {
     }
   }
 
-  // ---------- SSE 实时推送（实盘 / 监控） ----------
+  // ---------- SSE 实时推送（实盘 / 监控，多流常驻后台） ----------
   const STREAM_SCOPES = { live: "live", monitor: "monitor" };
-  let activeStream = null;
-  let streamFailures = 0;
+  const streams = {};
+  const streamFailures = {};
 
-  function startStream(scope, onMessage) {
-    stopStream();
+  function ensureStream(scope, onMessage) {
     if (!window.EventSource) return false;
+    const cur = streams[scope];
+    if (cur && cur.es.readyState === 1) {
+      if (onMessage) cur.onMessage = onMessage;
+      return true;
+    }
+    if (cur) { try { cur.es.close(); } catch (e) { /* 忽略 */ } }
     const token = API.getToken() || "";
     const es = new EventSource("/api/stream?scope=" + encodeURIComponent(scope) + "&token=" + encodeURIComponent(token));
-    activeStream = { es, scope };
-    streamFailures = 0;
-    es.onopen = () => { streamFailures = 0; };
+    streams[scope] = { es, onMessage };
+    streamFailures[scope] = 0;
+    es.onopen = () => { streamFailures[scope] = 0; };
     es.onmessage = (ev) => {
       if (!ev.data) return;
-      streamFailures = 0;
-      try { onMessage(JSON.parse(ev.data)); } catch (e) { /* 忽略 */ }
+      streamFailures[scope] = 0;
+      const cb = (streams[scope] && streams[scope].onMessage) || onMessage;
+      try { cb(JSON.parse(ev.data)); } catch (e) { /* 忽略 */ }
     };
     es.onerror = () => {
-      streamFailures += 1;
-      if (streamFailures >= 3) {
-        stopStream();
+      streamFailures[scope] = (streamFailures[scope] || 0) + 1;
+      if (streamFailures[scope] >= 3) {
+        stopStream(scope);
         const pg = pages[current];
         if (pg && pg.refresh) pg.refresh();
       }
@@ -149,15 +159,24 @@ window.App = (() => {
     return true;
   }
 
-  function stopStream() {
-    if (activeStream) {
-      try { activeStream.es.close(); } catch (e) { /* 忽略 */ }
-      activeStream = null;
+  function stopStream(scope) {
+    if (scope) {
+      const s = streams[scope];
+      if (s) { try { s.es.close(); } catch (e) { /* 忽略 */ } }
+      delete streams[scope];
+      delete streamFailures[scope];
+      return;
     }
+    Object.keys(streams).forEach((k) => {
+      try { streams[k].es.close(); } catch (e) { /* 忽略 */ }
+      delete streams[k];
+    });
+    Object.keys(streamFailures).forEach((k) => delete streamFailures[k]);
   }
 
   function isStreaming(scope) {
-    return !!(activeStream && activeStream.scope === scope && activeStream.es.readyState === 1);
+    const s = streams[scope];
+    return !!(s && s.es.readyState === 1);
   }
 
   // ---------- 通用确认弹窗 ----------
@@ -258,12 +277,12 @@ window.App = (() => {
   const TIP_DICT = {
     "策略类型": "选择要回测的策略：经典策略库 / 自定义规则 / 代码策略",
     "策略": "选择参与回测或优化的交易策略",
-    "数据源": "数据来源：合成数据（离线演示）/ 自动（优先连交易所）/ 本地数据库",
+    "数据源": "数据来源：仅交易所真实行情（OKX）；本地仅作缓存",
     "标的": "交易对，如 BTC/USDT",
     "周期": "K 线周期：1m/5m/15m/1h/4h/1d；周期越大，信号越慢、交易越少",
     "回看天数": "使用最近多少天的数据做回测",
     "天数": "生成或拉取多少天的历史数据",
-    "随机种子": "合成数据的随机数种子；固定后每次生成的数据可复现，便于公平对比",
+    "随机种子": "已停用：系统仅使用交易所真实数据，不再生成合成数据",
     "回测预设": "一键套用风险组合：标准 / 保守 / 激进，也可手动微调",
     "仓位比例": "每次开仓使用的资金比例，0.5 表示半仓",
     "仓位%": "每次开仓使用的资金比例，0.5 表示半仓",
@@ -331,7 +350,7 @@ window.App = (() => {
     "新密码": "设置的新密码，至少 6 位",
     "确认新密码": "再次输入新密码，保持一致",
     "模拟盘初始资金": "模拟盘的起始虚拟资金",
-    "数据库路径": "本地 SQLite 数据库文件路径",
+    "数据库路径": "行情缓存路径（内部使用，仅缓存交易所真实数据）",
     "指标": "控制图表上显示的指标：MA 均线 / BOLL 布林带 / RSI / MACD / 交易点标记",
   };
 

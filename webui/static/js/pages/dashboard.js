@@ -145,7 +145,7 @@ App.register("dashboard", (() => {
       box.innerHTML = symbols.map((s) => {
         const d = data[s] || {};
         if (!d.ok) {
-          return '<div class="card ticker-card hover" data-sym="' + s + '" title="点击查看 ' + s + ' 行情" style="cursor:pointer"><div class="ticker-symbol">' + s + '</div><div class="ticker-price">--</div><div class="ticker-change neg">离线（数据源不可达）</div><div class="market-tag">请使用合成数据源</div></div>';
+          return '<div class="card ticker-card hover" data-sym="' + s + '" title="点击查看 ' + s + ' 行情" style="cursor:pointer"><div class="ticker-symbol">' + s + '</div><div class="ticker-price">--</div><div class="ticker-change neg">交易所连接失败</div><div class="market-tag">请检查交易所连接/代理</div></div>';
         }
         const chg = d.change_pct !== null && d.change_pct !== undefined ? d.change_pct / 100 : null;
         return '<div class="card ticker-card hover" data-sym="' + s + '" title="点击查看 ' + s + ' 行情" style="cursor:pointer"><div class="ticker-symbol">' + s + '</div><div class="ticker-price ' + FMT.cls(chg) + '">' + FMT.price(d.last) + '</div><div class="ticker-change ' + FMT.cls(chg) + '">' + FMT.pctSigned(chg) + '</div><div class="market-tag">Bid ' + FMT.price(d.bid) + ' · Ask ' + FMT.price(d.ask) + '</div></div>';

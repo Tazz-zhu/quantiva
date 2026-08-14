@@ -24,7 +24,7 @@ from quant.monitor.service import MarketMonitor
 from quant.notify.feishu import FeishuNotifier
 from quant.report.analysis import analyze
 from quant.config import exchange_proxy, load_config
-from quant.data.fetcher import ExchangeDataFetcher, generate_synthetic_ohlcv
+from quant.data.fetcher import ExchangeDataFetcher
 from quant.data.storage import SQLiteStorage
 from quant.risk.manager import RiskManager
 from quant.strategy import create_strategy
@@ -93,7 +93,7 @@ class BacktestManager:
             symbol = data_cfg.get("symbol", "BTC/USDT")
             timeframe = data_cfg.get("timeframe", "1h")
             days = int(data_cfg.get("days", 730))
-            source = data_cfg.get("source", "synthetic")
+            source = data_cfg.get("source", "exchange")
             seed = int(data_cfg.get("seed", 42))
 
             df = self._load_data(source, data_cfg, symbol, timeframe, days, seed)
@@ -146,7 +146,7 @@ class BacktestManager:
 
     def _load_data(self, source, data_cfg, symbol, timeframe, days, seed) -> pd.DataFrame:
         if source == "synthetic":
-            return generate_synthetic_ohlcv(timeframe=timeframe, days=days, seed=seed)
+            raise ValueError("合成数据已停用，系统仅使用交易所真实行情")
         if source == "db":
             storage = SQLiteStorage(data_cfg.get("storage_db", "data/ohlcv.db"))
             df = storage.load_ohlcv(symbol, timeframe)
@@ -282,7 +282,7 @@ class BacktestManager:
             risk_cfg = params.get("risk") or cfg["risk"]
             bt_cfg = params.get("backtest") or cfg["backtest"]
             df = self._load_data(
-                data_cfg.get("source", "synthetic"), data_cfg,
+                data_cfg.get("source", "exchange"), data_cfg,
                 data_cfg.get("symbol", "BTC/USDT"),
                 data_cfg.get("timeframe", "1h"),
                 int(data_cfg.get("days", 365)),

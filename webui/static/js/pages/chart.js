@@ -17,7 +17,7 @@ App.register("chart", (() => {
   }
   const TIMEFRAMES = ["1m", "5m", "15m", "1h", "4h", "1d"];
   const SYMBOLS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "DOGE/USDT"];
-  const SOURCES = [["synthetic", "合成数据"], ["auto", "自动(交易所优先)"], ["db", "本地数据库"], ["exchange", "仅交易所"]];
+  const SOURCES = [["auto", "交易所真实行情"], ["exchange", "仅交易所"]];
   let charts = [];
 
   function clearCharts() {
@@ -93,7 +93,7 @@ App.register("chart", (() => {
     try {
       const data = await API.get("/api/ohlcv?symbol=" + encodeURIComponent(state.symbol) + "&timeframe=" + state.timeframe + "&limit=" + state.limit + "&source=" + state.source);
       state.data = data;
-      const srcLabel = { synthetic: "合成", auto: "交易所优先", db: "本地库", exchange: "OKX" }[data.source] || data.source;
+      const srcLabel = { auto: "交易所", db: "交易所", exchange: "OKX" }[data.source] || data.source;
       if (titleEl) titleEl.textContent = state.symbol + " · " + state.timeframe + " · " + srcLabel;
       const priceEl = document.getElementById("ch-price");
       const lastBar = data.bars && data.bars.length ? data.bars[data.bars.length - 1] : null;
@@ -112,7 +112,7 @@ App.register("chart", (() => {
     const title = document.getElementById("ch-title");
     const priceEl = document.getElementById("ch-price");
     const last = data.bars[data.bars.length - 1];
-    const srcLabel = data.source === "synthetic" ? "合成数据" : data.source === "auto" ? "交易所优先" : data.source === "exchange" ? "OKX" : data.source === "db" ? "本地库" : data.source;
+    const srcLabel = data.source === "exchange" ? "OKX" : "交易所";
     title.textContent = data.symbol + " · " + data.timeframe + " · " + srcLabel;
     if (priceEl) {
       const prev = data.bars[data.bars.length - 2];

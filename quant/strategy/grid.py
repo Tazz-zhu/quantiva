@@ -20,8 +20,8 @@ class GridStrategy(Strategy):
         close = df["close"]
         high = df["high"]
         low = df["low"]
-        upper = high.rolling(self.period).max()
-        lower = low.rolling(self.period).min()
+        upper = high.rolling(self.period).max().shift(1)  # ??? K ????????????
+        lower = low.rolling(self.period).min().shift(1)
         signal = pd.Series(0.0, index=df.index, dtype=float)
         position = 0
         for i in range(len(df)):

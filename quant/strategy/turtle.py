@@ -23,6 +23,8 @@ class TurtleStrategy(Strategy):
         close = df["close"]
         up_entry, _ = donchian(df, self.entry_period)
         _, low_exit = donchian(df, self.exit_period)
+        up_entry = up_entry.shift(1)  # ???? K ?????????????? K ?????
+        low_exit = low_exit.shift(1)
         signal = pd.Series(0.0, index=df.index, dtype=float)
         position = 0
         for i in range(len(df)):

@@ -1,10 +1,9 @@
-﻿"""实盘/模拟盘管理器：后台线程运行，支持交易所数据源与离线合成数据源。"""
+﻿"""实盘/模拟盘管理器：后台线程运行，行情数据全部来自交易所真实数据源。"""
 from __future__ import annotations
 
 import json
 import threading
 import time
-import random
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 
 from quant.config import exchange_proxy
-from quant.data.fetcher import ExchangeDataFetcher, generate_synthetic_ohlcv, to_pandas_freq
+from quant.data.fetcher import ExchangeDataFetcher
 from quant.data.indicators import atr
 from quant.execution.ccxt_broker import CCXTBroker
 from quant.execution.paper import PaperBroker
@@ -41,34 +40,6 @@ def load_live_session(config: dict) -> dict | None:
         return None
 
 
-class SyntheticLiveData:
-    """离线模拟行情源：每次轮询在已有数据上追加一根新 K 线（随机游走）。"""
-
-    def __init__(self, symbol: str, timeframe: str, warmup_bars: int = 200, seed: int = 7, base_price: float = 50000.0, days: int = 40):
-        self.symbol = symbol
-        self.timeframe = timeframe
-        self._rng = random.Random(seed)
-        df = generate_synthetic_ohlcv(timeframe=timeframe, days=days, seed=seed, base_price=base_price)
-        self.df = df.tail(warmup_bars + 5).copy()
-
-    def fetch_ohlcv(self, symbol: str, timeframe: str, limit: int | None = None):
-        freq = pd.tseries.frequencies.to_offset(to_pandas_freq(timeframe))
-        last = self.df.iloc[-1]
-        new_ts = last.name + freq
-        ret = self._rng.gauss(0.0002, 0.004)
-        open_ = float(last["close"])
-        close = open_ * (1.0 + ret)
-        high = max(open_, close) * (1.0 + abs(self._rng.gauss(0.0, 0.0012)))
-        low = min(open_, close) * (1.0 - abs(self._rng.gauss(0.0, 0.0012)))
-        volume = float(last["volume"]) * (0.8 + 0.4 * self._rng.random())
-        row = pd.DataFrame(
-            {"open": [open_], "high": [high], "low": [low], "close": [close], "volume": [volume]},
-            index=[new_ts],
-        )
-        self.df = pd.concat([self.df, row]).tail(limit or 2000)
-        return self.df
-
-
 class LiveManager:
     """在后台线程运行交易循环，并向 UI 暴露状态。"""
 
@@ -86,7 +57,7 @@ class LiveManager:
         self.symbol = ""
         self.timeframe = "1h"
         self.mode = "paper"
-        self.data_source = "synthetic"
+        self.data_source = "exchange"
         self.poll_interval = 60.0
         self.warmup_bars = 200
 
@@ -129,7 +100,7 @@ class LiveManager:
             self.mode = params.get("mode", "paper")
             self.symbol = params.get("symbol", "BTC/USDT")
             self.timeframe = params.get("timeframe", "1h")
-            self.data_source = params.get("data_source", "synthetic")
+            self.data_source = params.get("data_source", "exchange")
             self.poll_interval = float(params.get("poll_interval_sec", 60))
             self.warmup_bars = int(params.get("warmup_bars", 200))
 
@@ -162,17 +133,16 @@ class LiveManager:
                     proxy=exchange_proxy(self.cfg),
                 )
 
-            if self.data_source == "synthetic" or self.data_source == "auto":
-                self.provider = SyntheticLiveData(
-                    self.symbol, self.timeframe, self.warmup_bars,
-                    seed=int(params.get("seed", 7)),
-                )
-            else:
-                self.provider = ExchangeDataFetcher(
-                    self.cfg["exchange"]["id"],
-                    self.cfg["exchange"].get("sandbox", False),
-                    proxy=exchange_proxy(self.cfg),
-                )
+            if self.data_source in ("synthetic", "auto", "db", ""):
+                # 历史兼容：synthetic 已移除，一律使用交易所真实行情
+                if self.data_source != "exchange":
+                    self._add_event("warn", "数据源 " + str(self.data_source) + " 已停用，改用交易所真实行情")
+                self.data_source = "exchange"
+            self.provider = ExchangeDataFetcher(
+                self.cfg["exchange"]["id"],
+                self.cfg["exchange"].get("sandbox", False),
+                proxy=exchange_proxy(self.cfg),
+            )
 
             self.events.clear()
             self.orders.clear()
@@ -222,7 +192,6 @@ class LiveManager:
             "poll_interval_sec": self.poll_interval,
             "warmup_bars": self.warmup_bars,
             "paper_initial_balance": float(params.get("paper_initial_balance", 10000)),
-            "seed": int(params.get("seed", 7)),
             "strategy": {"name": self.strategy_name, "params": getattr(self.strategy, "params", None) or {}},
             "risk": vars(self.risk) if self.risk else {},
             "saved_at": datetime.now(timezone.utc).isoformat(),

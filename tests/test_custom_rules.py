@@ -2,7 +2,7 @@
 import unittest
 
 from quant.backtest.engine import BacktestEngine
-from quant.data.fetcher import generate_synthetic_ohlcv
+from fixture_loader import load_real_ohlcv
 from quant.risk.manager import RiskManager
 from quant.strategy import create_strategy
 
@@ -31,7 +31,7 @@ RULES = {
 
 class TestCustomRules(unittest.TestCase):
     def setUp(self):
-        self.data = generate_synthetic_ohlcv(timeframe="4h", days=200, seed=9)
+        self.data = load_real_ohlcv("4h", n=400)
 
     def test_custom_strategy_runs(self):
         strategy = create_strategy("custom", {"rules": RULES, "direction": "long_only"})

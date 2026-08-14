@@ -24,9 +24,7 @@ App.register("evolution", (() => {
             </div>
             <div class="field"><label>数据源</label>
               <select class="select" id="ev-source">
-                <option value="synthetic">合成数据（离线可用）</option>
-                <option value="auto">自动（交易所优先）</option>
-                <option value="db">本地数据库</option>
+                <option value="auto">交易所真实行情</option>
               </select>
             </div>
             <div class="input-row">
@@ -37,7 +35,7 @@ App.register("evolution", (() => {
             </div>
             <div class="input-row">
               <div class="field"><label>回看天数</label><input class="input" id="ev-days" type="number" value="300"></div>
-              <div class="field"><label>随机种子</label><input class="input" id="ev-seed" type="number" value="42"></div>
+              
             </div>
             <div class="divider"></div>
             <div class="card-title" style="margin-bottom:8px">🔧 候选参数（网格搜索）</div>
@@ -200,7 +198,6 @@ App.register("evolution", (() => {
         symbol: document.getElementById("ev-symbol").value.trim(),
         timeframe: document.getElementById("ev-timeframe").value,
         days: parseInt(document.getElementById("ev-days").value) || 300,
-        seed: parseInt(document.getElementById("ev-seed").value) || 42,
         backtest: {
           initial_capital: parseFloat(document.getElementById("ev-capital").value) || 10000,
           fee_rate: parseFloat(document.getElementById("ev-fee").value) || 0.001,

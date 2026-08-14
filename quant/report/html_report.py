@@ -162,7 +162,7 @@ def generate_html_report(payload: dict, strategy_name: str = "", source: str = "
   <div class="sub">生成时间 """ + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + """</div>
   <div class="badges">
     <span>策略 """ + html.escape(strategy_name) + """</span><span>标的 """ + html.escape(symbol) + """</span>
-    <span>周期 """ + timeframe + """</span><span>数据源 """ + html.escape(source or "synthetic") + """</span>
+    <span>周期 """ + timeframe + """</span><span>数据源 """ + html.escape(source or "exchange") + """</span>
     <span>回测区间 """ + d(t0) + " ~ " + d(t1) + """</span>
   </div>
 

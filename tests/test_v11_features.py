@@ -11,7 +11,9 @@ from types import SimpleNamespace
 import pandas as pd
 
 from quant.backtest.engine import BacktestEngine
+from fixture_loader import load_real_ohlcv
 from quant.data.fetcher import ExchangeDataFetcher, TIMEFRAME_NANOS
+from quant.data.storage import SQLiteStorage
 from quant.monitor.service import MarketMonitor
 from quant.risk.manager import RiskManager
 from quant.strategy import create_strategy
@@ -105,29 +107,34 @@ class TestV11Features(unittest.TestCase):
             mon.conn.close()
 
     def test_compare_job(self):
-        mgr = BacktestManager("config/config.yaml")
-        job_id = mgr.submit_compare({
-            "strategies": [
-                {"name": "ma_cross", "params": {"fast": 10, "slow": 30, "direction": "long_only"}, "label": "MA"},
-                {"name": "rsi_reversion", "params": {"period": 14, "oversold": 30, "overbought": 70}, "label": "RSI"},
-            ],
-            "data": {"source": "synthetic", "symbol": "BTC/USDT", "timeframe": "1h", "days": 30, "seed": 42},
-            "risk": {"max_position_pct": 0.5, "leverage": 1},
-            "backtest": {"initial_capital": 10000, "fee_rate": 0.001, "slippage": 0.0005, "funding_rate_8h": 0},
-        })
-        deadline = time.time() + 30
-        job = None
-        while time.time() < deadline:
-            job = mgr.get_compare_job(job_id)
-            if job and job["status"] != "running":
-                break
-            time.sleep(0.2)
-        self.assertIsNotNone(job)
-        self.assertEqual(job["status"], "done", job.get("error"))
-        self.assertEqual(len(job["results"]), 2)
-        for r in job["results"]:
-            self.assertIsNotNone(r["metrics"])
-            self.assertGreater(len(r["equity_curve"]), 0)
+        with tempfile.TemporaryDirectory() as tmp:
+            db = str(Path(tmp) / "ohlcv.db")
+            storage = SQLiteStorage(db)
+            storage.save_ohlcv("BTC/USDT", "1h", load_real_ohlcv("1h", n=400))
+            storage.close()
+            mgr = BacktestManager("config/config.yaml")
+            job_id = mgr.submit_compare({
+                "strategies": [
+                    {"name": "ma_cross", "params": {"fast": 10, "slow": 30, "direction": "long_only"}, "label": "MA"},
+                    {"name": "rsi_reversion", "params": {"period": 14, "oversold": 30, "overbought": 70}, "label": "RSI"},
+                ],
+                "data": {"source": "db", "symbol": "BTC/USDT", "timeframe": "1h", "days": 30, "seed": 42, "storage_db": db},
+                "risk": {"max_position_pct": 0.5, "leverage": 1},
+                "backtest": {"initial_capital": 10000, "fee_rate": 0.001, "slippage": 0.0005, "funding_rate_8h": 0},
+            })
+            deadline = time.time() + 30
+            job = None
+            while time.time() < deadline:
+                job = mgr.get_compare_job(job_id)
+                if job and job["status"] != "running":
+                    break
+                time.sleep(0.2)
+            self.assertIsNotNone(job)
+            self.assertEqual(job["status"], "done", job.get("error"))
+            self.assertEqual(len(job["results"]), 2)
+            for r in job["results"]:
+                self.assertIsNotNone(r["metrics"])
+                self.assertGreater(len(r["equity_curve"]), 0)
 
     def test_live_session_roundtrip(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -141,13 +148,13 @@ class TestV11Features(unittest.TestCase):
             lm.mode = "paper"
             lm.symbol = "BTC/USDT"
             lm.timeframe = "1h"
-            lm.data_source = "synthetic"
+            lm.data_source = "exchange"
             lm.poll_interval = 5.0
             lm.warmup_bars = 200
             lm.strategy_name = "ma_cross"
             lm.strategy = SimpleNamespace(params={"fast": 5, "slow": 20})
             lm.risk = RiskManager(max_position_pct=0.5)
-            lm._save_session({"paper_initial_balance": 12345, "seed": 9})
+            lm._save_session({"paper_initial_balance": 12345})
             sess = load_live_session(cfg)
             self.assertIsNotNone(sess)
             self.assertEqual(sess["symbol"], "BTC/USDT")
@@ -158,73 +165,9 @@ class TestV11Features(unittest.TestCase):
 
 
 def generate_fixture_df():
-    rng = pd.date_range(end=pd.Timestamp.now(tz="UTC").floor("1h"), periods=400, freq="1h")
-    close = 100.0 * (1.0 + pd.Series(range(400), index=rng) * 0.001)
-    df = pd.DataFrame(
-        {
-            "open": close.shift(1).fillna(close.iloc[0]),
-            "high": close * 1.002,
-            "low": close * 0.998,
-            "close": close,
-            "volume": 1000.0,
-        },
-        index=rng,
-    )
-    return df
+    # 使用交易所真实 K 线 fixture（OKX BTC/USDT 1h）
+    return load_real_ohlcv("1h", n=400)
 
-
-
-    def test_compare_job(self):
-        mgr = BacktestManager("config/config.yaml")
-        job_id = mgr.submit_compare({
-            "strategies": [
-                {"name": "ma_cross", "params": {"fast": 10, "slow": 30, "direction": "long_only"}, "label": "MA"},
-                {"name": "rsi_reversion", "params": {"period": 14, "oversold": 30, "overbought": 70}, "label": "RSI"},
-            ],
-            "data": {"source": "synthetic", "symbol": "BTC/USDT", "timeframe": "1h", "days": 30, "seed": 42},
-            "risk": {"max_position_pct": 0.5, "leverage": 1},
-            "backtest": {"initial_capital": 10000, "fee_rate": 0.001, "slippage": 0.0005, "funding_rate_8h": 0},
-        })
-        deadline = time.time() + 30
-        job = None
-        while time.time() < deadline:
-            job = mgr.get_compare_job(job_id)
-            if job and job["status"] != "running":
-                break
-            time.sleep(0.2)
-        self.assertIsNotNone(job)
-        self.assertEqual(job["status"], "done", job.get("error"))
-        self.assertEqual(len(job["results"]), 2)
-        for r in job["results"]:
-            self.assertIsNotNone(r["metrics"])
-            self.assertGreater(len(r["equity_curve"]), 0)
-
-    def test_live_session_roundtrip(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            cfg = {
-                "system": {"data_dir": tmp},
-                "backtest": {"fee_rate": 0.001, "slippage": 0.0005},
-                "exchange": {"id": "binance", "sandbox": False},
-                "risk": {},
-            }
-            lm = LiveManager(cfg)
-            lm.mode = "paper"
-            lm.symbol = "BTC/USDT"
-            lm.timeframe = "1h"
-            lm.data_source = "synthetic"
-            lm.poll_interval = 5.0
-            lm.warmup_bars = 200
-            lm.strategy_name = "ma_cross"
-            lm.strategy = SimpleNamespace(params={"fast": 5, "slow": 20})
-            lm.risk = RiskManager(max_position_pct=0.5)
-            lm._save_session({"paper_initial_balance": 12345, "seed": 9})
-            sess = load_live_session(cfg)
-            self.assertIsNotNone(sess)
-            self.assertEqual(sess["symbol"], "BTC/USDT")
-            self.assertEqual(sess["paper_initial_balance"], 12345)
-            self.assertEqual(sess["strategy"]["params"]["fast"], 5)
-            lm._clear_session()
-            self.assertIsNone(load_live_session(cfg))
 
 if __name__ == "__main__":
     unittest.main()

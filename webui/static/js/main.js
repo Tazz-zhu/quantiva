@@ -33,6 +33,42 @@
     if (cur === "evolution" && App.pages.evolution.refresh) App.pages.evolution.refresh();
   }, 4000);
 
+  // ---------- 后台任务全局监控（回测 / 参数优化在后台持续运行） ----------
+  const bgBtRunning = new Set();
+  const bgEvRunning = new Set();
+  function updateNavBadge(id, count) {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.style.display = count > 0 ? "" : "none";
+    b.textContent = count > 99 ? "99+" : String(count);
+  }
+  async function pollBackgroundJobs() {
+    try {
+      const jobs = (await API.get("/api/backtest/jobs")).jobs || [];
+      const runningIds = jobs.filter((j) => j.status === "running").map((j) => j.id);
+      const doneIds = [...bgBtRunning].filter((id) => !runningIds.includes(id));
+      bgBtRunning.clear();
+      runningIds.forEach((id) => bgBtRunning.add(id));
+      updateNavBadge("nav-backtest-badge", runningIds.length);
+      if (doneIds.length && App.current !== "backtest") {
+        const j = jobs.find((x) => doneIds.includes(x.id));
+        if (j) notifyUser("回测完成", (j.strategy || "策略") + " · " + (j.symbol || "") + " " + (j.timeframe || ""));
+      }
+    } catch (e) { /* 忽略 */ }
+    try {
+      const jobs = (await API.get("/api/evolution/jobs")).jobs || [];
+      const runningIds = jobs.filter((j) => j.status === "running").map((j) => j.id);
+      const doneIds = [...bgEvRunning].filter((id) => !runningIds.includes(id));
+      bgEvRunning.clear();
+      runningIds.forEach((id) => bgEvRunning.add(id));
+      updateNavBadge("nav-evolution-badge", runningIds.length);
+      if (doneIds.length && App.current !== "evolution") {
+        notifyUser("参数优化完成", "最优参数组合已写入迭代日志");
+      }
+    } catch (e) { /* 忽略 */ }
+  }
+  setInterval(pollBackgroundJobs, 4000);
+
   App.initClock();
   App.checkHealth();
   setInterval(App.checkHealth, 15000);

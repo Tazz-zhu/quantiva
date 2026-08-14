@@ -1,10 +1,10 @@
-﻿# Quantiva · AI 加密货币量化交易终端
+# Quantiva · AI 加密货币量化交易终端
 
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![CI](https://github.com/Tazz-zhu/quantiva/actions/workflows/ci.yml/badge.svg)
 ![Tests](https://img.shields.io/badge/tests-40%20passed-brightgreen)
-![Offline](https://img.shields.io/badge/offline--friendly-synthetic%20data-blue)
+![Data](https://img.shields.io/badge/data-real%20exchange%20only-brightgreen)
 
 > 当前版本：**v1.4.0**（2026-08-09）｜[更新日志](CHANGELOG.md)
 
@@ -39,7 +39,7 @@ pip install -r requirements.txt
 python scripts/webui.py        # 打开 http://127.0.0.1:8686
 ```
 
-> 默认账号 `admin` / `admin123`，登录后请在「系统设置」中立即修改密码。离线环境选择「合成数据」即可完整演示全部功能。
+> 默认账号 `admin` / `admin123`，登录后请在「系统设置」中立即修改密码。行情数据仅来自交易所真实数据。
 
 ## 🖼 界面预览
 
@@ -71,10 +71,10 @@ python scripts/webui.py --prod   # 生产模式（0.0.0.0，不自动开浏览�
 | 市场监控 | 32 币种实时监控 + 动态榜单（成交量/涨幅/跌幅 TOP10）+ 异动检测，24h 常驻 |
 | 策略进化 | 参数网格搜索自我迭代、交易持久化、定时分析、经验沉淀到迭代日志 |
 | 实盘交易 | 模拟盘/实盘启停、杠杆、止损止盈实时监控、持仓/成交/事件日志 |
-| 数据管理 | 抓取行情入库（合成/真实）、本地数据库统计 |
+| 数据管理 | 抓取交易所真实行情入库、本地数据库统计 |
 | 系统设置 | 交易所 / AI / 飞书 / 安全运维 / 审计日志 / 交易成本 |
 
-> **离线优先**：无法直连交易所时选择「合成数据」即可完整演示全部功能。
+> **真实数据**：所有行情数据仅来自交易所（OKX / Binance 等），不再提供合成/虚拟数据。
 
 ---
 
@@ -90,6 +90,7 @@ python scripts/webui.py --prod   # 生产模式（0.0.0.0，不自动开浏览�
 | RSI 超买超卖 | 均值回归 | Welles Wilder |
 | 区间网格 | 震荡网格 | Swing Trading |
 | 三重滤网 | 多重滤网 | Alexander Elder |
+| TrendFlow 突破 | 趋势跟踪 | Donchian 突破 + ATR 通道 + ADX 过滤 |
 | 🧑‍💻 代码策略 | TradingView 风格 | Python（Pine Script 替代） |
 | 自定义规则 | 自定义 | 用户 |
 
@@ -100,9 +101,9 @@ python scripts/webui.py --prod   # 生产模式（0.0.0.0，不自动开浏览�
 | 功能 | 依赖的网络 | 离线可用 | 说明 |
 | --- | --- | --- | --- |
 | Web 控制台 | 仅本机 127.0.0.1 | ✅ | 无外网依赖 |
-| 回测 / 策略 / 分析 | 无（或交易所行情） | ✅（合成数据） | 真实行情需交易所 API |
-| 市场监控 | 交易所行情 | ✅（合成数据） | source: synthetic 可离线演示 |
-| 模拟盘（paper） | 行情源 | ✅（合成数据） | source: exchange 时需交易所可达 |
+| 回测 / 策略 / 分析 | 交易所行情 | ❌（需交易所可达） | 仅使用交易所真实行情 |
+| 市场监控 | 交易所行情 | ❌（需交易所可达） | 仅使用交易所真实行情 |
+| 模拟盘（paper） | 行情源 | ❌（需交易所可达） | 行情仅来自交易所真实数据，撮合在本地模拟 |
 | 实盘交易 | **OKX 等交易所 API** | ❌ | 需可访问 www.okx.com / api.okx.com |
 | AI 优化建议 | **DeepSeek / OpenAI API** | ❌ | 默认 DeepSeek：api.deepseek.com（国内直连） |
 | 飞书推送 | 飞书 Webhook | ❌ | open.feishu.cn（国内直连） |
@@ -110,7 +111,7 @@ python scripts/webui.py --prod   # 生产模式（0.0.0.0，不自动开浏览�
 **推荐环境（按省心程度）：**
 1. **海外 VPS / 服务器**（香港 / 新加坡 / 美西）：所有 API 直连，OKX + DeepSeek + 飞书全部可用，配合 Docker 部署最稳定；
 2. **国内服务器 / 本机**：DeepSeek、飞书直连可用；**OKX 需代理**（设置 `HTTPS_PROXY` 环境变量，或 ccxt `proxies` 参数）；
-3. **完全离线**：关闭监控真实行情与实盘，用「合成数据」可完整演示回测 / 策略 / 进化 / 模拟盘。
+3. **离线不可用**：系统不再内置合成数据，行情、回测、监控、实盘均依赖交易所真实数据。
 
 **防火墙白名单（只需 443 出站）：** `www.okx.com`、`api.okx.com`、`aws.okx.com`（OKX）；`api.deepseek.com`（DeepSeek）；`open.feishu.cn`（飞书）；若用 OpenAI 需 `api.openai.com`。
 

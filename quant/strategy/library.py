@@ -90,6 +90,21 @@ STRATEGY_LIBRARY = [
         ],
     },
     {
+        "name": "trend_flow",
+        "school": "????",
+        "master": "TrendFlow ? Donchian ?? + ATR ??",
+        "desc": "??????? EMA ?????+ Donchian ?????? + ATR ?????????????????????????",
+        "params": [
+            {"k": "fast_ma", "label": "????", "type": "number", "def": 20},
+            {"k": "slow_ma", "label": "??????", "type": "number", "def": 60},
+            {"k": "entry_lookback", "label": "??????", "type": "number", "def": 20},
+            {"k": "exit_atr_mult", "label": "ATR ????", "type": "number", "step": 0.5, "def": 3},
+            {"k": "min_atr_pct", "label": "?? ATR%", "type": "number", "step": 0.1, "def": 0},
+            {"k": "min_adx", "label": "ADX ????", "type": "number", "step": 1, "def": 0},
+            {"k": "direction", "label": "????", "type": "select", "def": "long_only", "options": [["long_only", "???"], ["long_short", "????"]]},
+        ],
+    },
+    {
         "name": "code",
         "school": "代码策略",
         "master": "TradingView 风格 · Python",

@@ -1,13 +1,12 @@
 ﻿"""市场监控服务：多币种涨跌 / 成交量异动检测，24 小时常驻运行。
 
-- 支持合成数据（离线演示）与真实交易所两种数据源
+- 行情数据全部来自交易所真实数据源
 - 事件检测：放量、1小时急涨/急跌、24小时大涨/大跌
 - 事件持久化到 SQLite（data/monitor.db），重启不丢失
 - 异动实时推送到飞书（可选）
 """
 from __future__ import annotations
 
-import random
 import sqlite3
 import threading
 import time
@@ -20,7 +19,6 @@ import pandas as pd
 from quant.config import exchange_proxy
 from quant.data.fetcher import ExchangeDataFetcher
 from quant.utils.logger import setup_logger
-from quant.web.live_manager import SyntheticLiveData
 
 logger = setup_logger("monitor")
 
@@ -32,17 +30,6 @@ DEFAULT_SYMBOLS = [
     "SEI/USDT", "WLD/USDT", "PEPE/USDT", "BONK/USDT", "TRX/USDT", "TON/USDT",
     "HBAR/USDT", "ALGO/USDT",
 ]
-BASE_PRICES = {
-    "BTC/USDT": 65000.0, "ETH/USDT": 3500.0, "SOL/USDT": 160.0, "BNB/USDT": 590.0,
-    "XRP/USDT": 0.55, "DOGE/USDT": 0.13, "ADA/USDT": 0.45, "AVAX/USDT": 28.0,
-    "LINK/USDT": 14.0, "DOT/USDT": 6.0, "MATIC/USDT": 0.7, "LTC/USDT": 70.0,
-    "SHIB/USDT": 0.000018, "UNI/USDT": 8.0, "ATOM/USDT": 8.5, "ETC/USDT": 22.0,
-    "FIL/USDT": 5.0, "APT/USDT": 8.0, "NEAR/USDT": 5.0, "OP/USDT": 1.8,
-    "ARB/USDT": 1.0, "SUI/USDT": 1.2, "INJ/USDT": 20.0, "TIA/USDT": 7.0,
-    "SEI/USDT": 0.4, "WLD/USDT": 2.5, "PEPE/USDT": 0.000011, "BONK/USDT": 0.000026,
-    "TRX/USDT": 0.12, "TON/USDT": 5.5, "HBAR/USDT": 0.08, "ALGO/USDT": 0.2,
-}
-
 EVENT_TYPES = {
     "volume_surge": "放量异动",
     "price_surge_1h": "1小时急涨",
@@ -53,47 +40,16 @@ EVENT_TYPES = {
 }
 
 
-class MarketSyntheticSource:
-    """多币种合成行情源：按概率注入放量 / 跳价异动，模拟真实市场。"""
-
-    def __init__(self, symbols: list[str], seed: int = 7, warmup_bars: int = 1500):
-        self.symbols = symbols
-        self._rng = random.Random(seed)
-        self.providers = {}
-        for i, sym in enumerate(symbols):
-            self.providers[sym] = SyntheticLiveData(
-                sym, "1m", warmup_bars=warmup_bars, seed=seed + i * 13,
-                base_price=BASE_PRICES.get(sym, 100.0), days=3,
-            )
-
-    def next_bars(self) -> dict[str, pd.DataFrame]:
-        out = {}
-        for sym, prov in self.providers.items():
-            df = prov.fetch_ohlcv(sym, "1m", limit=2000)
-            if self._rng.random() < 0.04:
-                shock = self._rng.random()
-                last_idx = df.index[-1]
-                if shock < 0.55:
-                    df.loc[last_idx, "volume"] = df.loc[last_idx, "volume"] * self._rng.uniform(3.0, 8.0)
-                elif shock < 0.8:
-                    m = 1.0 + self._rng.uniform(0.012, 0.045)
-                    df.loc[last_idx, "close"] *= m
-                    df.loc[last_idx, "high"] = max(df.loc[last_idx, "high"] * 1.001, df.loc[last_idx, "close"])
-                else:
-                    m = 1.0 - self._rng.uniform(0.012, 0.045)
-                    df.loc[last_idx, "close"] *= m
-                    df.loc[last_idx, "low"] = min(df.loc[last_idx, "low"] * 0.999, df.loc[last_idx, "close"])
-            out[sym] = df
-        return out
-
-
 class MarketMonitor:
     def __init__(self, config: dict, db_path: str | Path = "data/monitor.db", notifier=None):
         self.cfg = config
         mon_cfg = config.get("monitor") or {}
         self.symbols = mon_cfg.get("symbols") or DEFAULT_SYMBOLS
         self.interval = float(mon_cfg.get("interval_sec", 30))
-        self.source_type = mon_cfg.get("source", "synthetic")
+        self.source_type = mon_cfg.get("source", "exchange")
+        if self.source_type != "exchange":
+            logger.warning("监控数据源 %s 已停用，强制使用交易所真实行情", self.source_type)
+            self.source_type = "exchange"
         th = mon_cfg.get("thresholds") or {}
         self.thresholds = {
             "volume_ratio": float(th.get("volume_ratio", 3.0)),
@@ -113,7 +69,6 @@ class MarketMonitor:
         self.started_at: str | None = None
         self.source_error: str | None = None
         self._last_alert: dict[tuple[str, str], float] = {}
-        self._source = MarketSyntheticSource(self.symbols) if self.source_type == "synthetic" else None
         self._db_path = Path(db_path)
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._db_lock = threading.Lock()
@@ -156,10 +111,7 @@ class MarketMonitor:
             time.sleep(self.interval)
 
     def _scan(self) -> None:
-        if self._source is not None:
-            bars_map = self._source.next_bars()
-        else:
-            bars_map = self._fetch_exchange()
+        bars_map = self._fetch_exchange()
         self.source_error = None
         for sym, df in bars_map.items():
             self._process_symbol(sym, df)

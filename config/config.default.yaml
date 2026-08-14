@@ -7,18 +7,21 @@ exchange:
 
 data:
   symbol: BTC/USDT
-  timeframe: 1h
+  timeframe: 1d
   days: 730            # 回测/抓取的默认天数
   storage_db: data/ohlcv.db
   quote: USDT
 
 strategy:
-  name: ma_cross       # 默认策略（回测页可选全部经典策略）
+  name: trend_flow
   params:
-    fast: 20
-    slow: 50
-    direction: long_only   # long_only | long_short
-
+    fast_ma: 20
+    slow_ma: 100
+    entry_lookback: 10
+    exit_atr_mult: 2.0
+    min_atr_pct: 0.0
+    min_adx: 20.0
+    direction: long_short
 risk:
   max_position_pct: 0.5       # 每笔仓位名义价值占权益比例上限（0~1）
   leverage: 1.0               # 杠杆倍数（开仓保证金 = 名义/杠杆）
@@ -33,7 +36,7 @@ risk:
   max_daily_loss_pct: null    # 实盘日亏损熔断：如 0.02 = 当日亏损达权益 2% 即熔断（次日 UTC 0 点复位）
   max_drawdown_pct: null      # 组合权益回撤熔断：如 0.05 = 从峰值回撤 5% 即平仓并暂停开仓
   require_live_confirm: true  # 实盘启动是否需要二次确认（建议保持开启）
-  trade_direction: long_only
+  trade_direction: long_short
 
 backtest:
   initial_capital: 10000
@@ -62,7 +65,7 @@ ai:
 monitor:
   enabled: true
   interval_sec: 30
-  source: synthetic         # synthetic | exchange
+  source: exchange             # 仅使用交易所真实行情
   symbols: []               # 留空使用默认 32 个主流币种
   thresholds:
     volume_ratio: 3.0       # 放量倍数

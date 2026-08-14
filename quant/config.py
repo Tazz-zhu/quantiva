@@ -21,14 +21,16 @@ DEFAULT_CONFIG = {
     "exchange": {"id": "binance", "sandbox": False},
     "data": {
         "symbol": "BTC/USDT",
-        "timeframe": "1h",
+        "timeframe": "1d",
         "days": 730,
         "storage_db": "data/ohlcv.db",
         "quote": "USDT",
     },
     "strategy": {
-        "name": "ma_cross",
-        "params": {"fast": 20, "slow": 50, "direction": "long_only"},
+        "name": "trend_flow",
+        "params": {"fast_ma": 20, "slow_ma": 100, "entry_lookback": 10,
+                   "exit_atr_mult": 2.0, "min_atr_pct": 0.0, "min_adx": 20.0,
+                   "direction": "long_short"},
     },
     "risk": {
         "max_position_pct": 0.5,
@@ -38,7 +40,7 @@ DEFAULT_CONFIG = {
         "atr_stop_mult": 2.0,
         "max_positions": 1,
         "max_daily_loss_pct": None,
-        "trade_direction": "long_only",
+        "trade_direction": "long_short",
     },
     "backtest": {
         "initial_capital": 10000.0,
@@ -62,7 +64,7 @@ DEFAULT_CONFIG = {
     "monitor": {
         "enabled": True,
         "interval_sec": 30,
-        "source": "synthetic",
+        "source": "exchange",
         "symbols": [
             "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "DOGE/USDT",
             "ADA/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT", "MATIC/USDT", "LTC/USDT",

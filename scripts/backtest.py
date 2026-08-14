@@ -24,7 +24,7 @@ import pandas as pd  # noqa: E402
 
 from quant.backtest.engine import BacktestEngine  # noqa: E402
 from quant.config import load_config  # noqa: E402
-from quant.data.fetcher import ExchangeDataFetcher, generate_synthetic_ohlcv  # noqa: E402
+from quant.data.fetcher import ExchangeDataFetcher  # noqa: E402
 from quant.data.storage import SQLiteStorage  # noqa: E402
 from quant.report.chart import plot_backtest  # noqa: E402
 from quant.risk.manager import RiskManager  # noqa: E402
@@ -59,7 +59,6 @@ def main() -> None:
     parser.add_argument("--symbol", default=None, help="????? BTC/USDT")
     parser.add_argument("--timeframe", default=None, help="K ????? 1h/4h/1d")
     parser.add_argument("--days", type=int, default=None, help="????")
-    parser.add_argument("--synthetic", action="store_true", help="????????????")
     parser.add_argument("--output", default=None, help="???????? reports/btc_ma")
     parser.add_argument("--no-chart", action="store_true", help="?????")
     args = parser.parse_args()
@@ -79,27 +78,23 @@ def main() -> None:
     )
 
     # 1) ????
-    if args.synthetic:
-        logger.info("??????: %s %s %d ?", symbol, timeframe, days)
-        df = generate_synthetic_ohlcv(timeframe=timeframe, days=days)
-    else:
-        storage = SQLiteStorage(cfg["data"]["storage_db"])
-        df = storage.load_ohlcv(symbol, timeframe)
-        if len(df) < 200:
-            logger.info("?????????? %s ?? %d ???", cfg["exchange"]["id"], days)
-            fetcher = ExchangeDataFetcher(cfg["exchange"]["id"], cfg["exchange"].get("sandbox", False))
-            since = int(pd.Timestamp.now(tz="UTC").timestamp() * 1000) - days * 86_400_000
-            try:
-                df = fetcher.fetch_ohlcv(symbol, timeframe, since=since)
-            except Exception as exc:  # noqa: BLE001
-                logger.error("????: %s", exc)
-                logger.error("?????/?????? --synthetic ??????????")
-                sys.exit(1)
-            storage.save_ohlcv(symbol, timeframe, df)
-        storage.close()
-        if df.empty:
-            logger.error("????????????/??????? --synthetic ????")
+    storage = SQLiteStorage(cfg["data"]["storage_db"])
+    df = storage.load_ohlcv(symbol, timeframe)
+    if len(df) < 200:
+        logger.info("?????????? %s ?? %d ???", cfg["exchange"]["id"], days)
+        fetcher = ExchangeDataFetcher(cfg["exchange"]["id"], cfg["exchange"].get("sandbox", False))
+        since = int(pd.Timestamp.now(tz="UTC").timestamp() * 1000) - days * 86_400_000
+        try:
+            df = fetcher.fetch_ohlcv(symbol, timeframe, since=since)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("????: %s", exc)
+            logger.error("请检查网络/代理后重试，仅支持交易所真实数据")
             sys.exit(1)
+        storage.save_ohlcv(symbol, timeframe, df)
+    storage.close()
+    if df.empty:
+        logger.error("请检查网络/代理后重试，仅支持交易所真实数据")
+        sys.exit(1)
 
     # 2) ?????
     strategy = create_strategy(cfg["strategy"]["name"], cfg["strategy"].get("params"))

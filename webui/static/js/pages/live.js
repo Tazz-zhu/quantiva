@@ -17,8 +17,7 @@ App.register("live", (() => {
             </div>
             <div class="field"><label>数据源</label>
               <select class="select" id="lv-source">
-                <option value="synthetic">合成数据（离线模拟行情）</option>
-                <option value="exchange">交易所实时行情</option>
+                <option value="exchange" selected>交易所实时行情</option>
               </select>
             </div>
             <div class="input-row">
