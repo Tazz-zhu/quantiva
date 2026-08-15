@@ -36,6 +36,27 @@ class RiskManager:
     max_drawdown_pct: float | None = None
     allow_reentry_same_bar: bool = False
     trade_direction: str = "long_only"
+    # ---- freqtrade 风格动态止盈（minimal_roi）----
+    # roi_table: [[分钟, 收益率阈值], ...]，持仓达到分钟数且浮盈 >= 阈值即止盈。
+    # 例 [[0, 0.10], [30, 0.05], [60, 0]] = 满 0 分钟盈利 10% 止盈、30 分钟 5%、60 分钟保本。
+    roi_table: list = field(default_factory=list)
+    # ---- freqtrade 风格仓位调整（position adjustment）----
+    adjust_after_mult: float = 0.0   # 浮盈达到 N 倍 ATR 后才允许加仓（0=关闭）
+    adjust_step_pct: float = 0.0     # 每次加仓金额 = 当前权益 x 该比例（0=关闭）
+    adjust_max_times: int = 0        # 最多加仓次数
+    # ---- 保护器配置（Protections）----
+    protections: dict = field(default_factory=dict)
+
+    def roi_target(self, elapsed_minutes: float) -> float | None:
+        """freqtrade minimal_roi 语义：返回 elapsed 时刻应满足的止盈阈值（None=无止盈）。"""
+        if not self.roi_table:
+            return None
+        best: tuple[float, float] | None = None
+        for minutes, roi in self.roi_table:
+            if elapsed_minutes >= float(minutes):
+                if best is None or float(minutes) >= best[0]:
+                    best = (float(minutes), float(roi))
+        return best[1] if best is not None else None
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> "RiskManager":
@@ -102,3 +123,15 @@ class RiskManager:
             if entry_price - current_price >= self.break_even_after_mult * atr_value:
                 return min(current_stop or entry_price, entry_price)
         return current_stop
+
+    def should_adjust(self, side: str, entry_price: float, current_price: float, atr_value: float | None,
+                     adjust_count: int) -> bool:
+        """是否允许加仓：浮盈达到 adjust_after_mult 倍 ATR 且未超次数上限。"""
+        if self.adjust_step_pct <= 0 or adjust_count >= self.adjust_max_times:
+            return False
+        if not self.adjust_after_mult or not atr_value:
+            return False
+        if side == "long":
+            return current_price - entry_price >= self.adjust_after_mult * atr_value
+        return entry_price - current_price >= self.adjust_after_mult * atr_value
+

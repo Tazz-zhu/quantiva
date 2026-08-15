@@ -2,6 +2,22 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格记录版本变更。
 
+## [1.6.0] - 2026-08-16
+### 新增：freqtrade 核心能力二期（组合级）
+- **多币种组合回测**：统一时间轴多币种并行模拟，共享现金池与开仓数上限，组合权益/回撤 + 各币种贡献统计（新页面「组合回测」）
+- **动态选币 pairlist**：静态列表 / 成交量 Top N 轮动 + 价格 / 上新过滤，页面一键预览并填入标的
+- **贝叶斯超参优化**：optuna TPE 智能搜索替代穷举网格（「策略进化」新增方法切换，无 optuna 自动回退随机搜索）
+- **FreqAI 增强**：关联对横截面特征（用其它币种预测本币）、定时重训调度（live 模型跟随市场漂移，页面一键启动/停止/立即重训）
+- 新 API：/api/backtest/portfolio、/api/pairlist/preview、/api/freqai/schedule、/api/freqai/retrainer
+
+## [1.5.0] - 2026-08-16
+### 新增：freqtrade 四大优势集成
+- **回测引擎严谨化**：动态 ROI 表（minimal_roi）、平仓原因/月度/星期/小时 breakdown、逐笔统计（最大连亏/最佳最差单笔/R 分布）、回测结果缓存（同参数+同数据自动复用）
+- **抗过拟合工具包（quant.rigor）**：10 种超参损失函数（Sharpe/Sortino/Calmar/盈亏比/多指标组合…）、纪元过滤器、滚动样本外 Walk-Forward 验证（多折训练→样本外拼接评估）、统计显著性（bootstrap p 值 / 缩水夏普 DSR / 置换检验 / 参数稳定性）、前视偏差检测、递归漂移（回测-实盘一致性）检测
+- **风控体系（freqtrade protections）**：平仓冷却期、账户回撤熔断、止损守卫、低盈利标的暂停；仓位调整（浮盈分批加仓，平均成本计价）
+- **FreqAI（quant.freqai）**：因果技术指标特征工程（5 组 20+ 特征）、前瞻收益/涨跌标签、purge+embargo 防泄漏时序切分、sklearn 模型注册表（随机森林/梯度提升/岭回归/逻辑回归，可选 LightGBM/XGBoost）、滚动样本外 ML 回测、模型持久化与实时推理、FreqAIStrategy 信号接入回测
+- Web 新增「抗过拟合」与「FreqAI」两个页面与完整 API（/api/rigor/*、/api/freqai/*）
+
 ## [1.4.0] - 2026-08-09
 ### 新增（用户视角优化 20 条）
 - 实盘页「一键平仓」与持仓入场价/浮动盈亏展示

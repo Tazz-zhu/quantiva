@@ -48,3 +48,8 @@ _pw.js
 
 # 本地录制脚本（机器相关，不提交）
 _record.js
+
+# 工作区遗留（非本项目，避免误提交）
+crypto-quant/
+crypto_quant_framework.md
+resume_text.txt

@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![CI](https://github.com/Tazz-zhu/quantiva/actions/workflows/ci.yml/badge.svg)
-![Tests](https://img.shields.io/badge/tests-40%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-77%20passed-brightgreen)
 ![Data](https://img.shields.io/badge/data-real%20exchange%20only-brightgreen)
 
 > 当前版本：**v1.4.0**（2026-08-09）｜[更新日志](CHANGELOG.md)
@@ -78,6 +78,25 @@ python scripts/webui.py --prod   # 生产模式（0.0.0.0，不自动开浏览�
 
 ---
 
+## 🧬 freqtrade 优势集成（v1.5.0）
+
+本系统移植了开源高星项目 **freqtrade** 的四大核心优势，并通过 Web 页面「抗过拟合」与「FreqAI」直接使用：
+
+| 优势 | 落地模块 | 说明 |
+| --- | --- | --- |
+| 回测引擎 | `quant/backtest` | 动态 ROI 表、breakdown、逐笔统计、结果缓存；**多币种组合回测**（共享现金/开仓上限/组合回撤） |
+| 动态选币 | `quant/pairlist` | 静态 / 成交量 Top N 轮动 + 价格 / 上新过滤，Web 一键预览 |
+| 抗过拟合 | `quant/rigor` | 10 种寻优损失函数、纪元过滤器、滚动样本外、显著性检验、前视与递归检测；**贝叶斯优化（optuna）** |
+| 抗过拟合 | `quant/rigor` | 10 种寻优损失函数、纪元过滤器、滚动样本外（Walk-Forward）、bootstrap/缩水夏普/置换检验、前视与递归漂移检测 |
+| 风控体系 | `quant/risk/protections` | 冷却期 / 回撤熔断 / 止损守卫 / 低盈利暂停；浮盈分批加仓 |
+| FreqAI | `quant/freqai` | 因果特征 + **关联对特征**、purge+embargo 防泄漏切分、sklearn 模型库、滚动样本外 ML 回测、**定时重训**、模型持久化与实时推理 |
+
+**使用入口**：侧栏 →「抗过拟合」（Walk-Forward 验证 / 前视检测 / 递归检测 / 显著性检验）、「FreqAI」（ML 回测 / 训练 / 实时推理）。
+
+> 依赖新增：`scikit-learn`、`joblib`、`scipy`（`pip install -r requirements.txt`）。
+
+---
+
 ## 📚 经典策略库（各流派大师策略）
 
 | 策略 | 流派 | 代表人物 |
@@ -137,9 +156,11 @@ ai:
 ```
 quantiva/
 ├── quant/                  # 核心 Python 包
-│   ├── backtest/           # 回测引擎（信号执行/止损/强平/资金费率）
-│   ├── strategy/           # 策略库（经典 8 种 + 代码/自定义规则）
-│   ├── risk/               # 风控模型（风险预算/移动止损/熔断）
+│   ├── backtest/           # 回测引擎（ROI 表/保护器/加仓/breakdown/缓存）
+│   ├── rigor/              # 抗过拟合（损失函数/过滤器/滚动样本外/显著性/前视/递归）
+│   ├── freqai/             # FreqAI（特征工程/防泄漏切分/模型/管线/策略）
+│   ├── strategy/           # 策略库（经典 8 种 + 代码/自定义规则 + FreqAI）
+│   ├── risk/               # 风控模型（风险预算/移动止损/熔断/protections）
 │   ├── analytics/          # 绩效指标（夏普/VaR/R倍数/Alpha-Beta）
 │   ├── evolution/          # 参数优化（网格搜索 + 样本外验证）
 │   ├── monitor/            # 市场监控（异动/波动率突增告警）

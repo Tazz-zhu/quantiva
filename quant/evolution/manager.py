@@ -62,11 +62,25 @@ class EvolutionManager:
                     if job:
                         job["progress"] = str(done) + "/" + str(total)
 
-            result = self.optimizer.run(
-                strategy, ranges, data, risk_cfg=risk,
-                target=target, max_combos=max_combos, progress=progress,
-                holdout_ratio=holdout_ratio, min_trades=min_trades,
-            )
+            method = params.get("method", "grid")
+            if method == "bayesian":
+                param_space = params.get("param_space") or ranges
+                result = self.optimizer.run_bayesian(
+                    strategy, param_space, data, risk_cfg=risk,
+                    target=target,
+                    n_trials=int(params.get("n_trials", 50)),
+                    timeout=float(params.get("timeout", 600)),
+                    workers=int(params.get("workers", 4)),
+                    progress=progress,
+                    holdout_ratio=holdout_ratio, min_trades=min_trades,
+                    seed=int(params.get("seed", 42)),
+                )
+            else:
+                result = self.optimizer.run(
+                    strategy, ranges, data, risk_cfg=risk,
+                    target=target, max_combos=max_combos, progress=progress,
+                    holdout_ratio=holdout_ratio, min_trades=min_trades,
+                )
             best = result.get("best") or {}
             if best.get("metrics"):
                 iteration_id = self.store.save_iteration(

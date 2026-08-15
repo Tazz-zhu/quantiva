@@ -4,7 +4,7 @@ window.App = (() => {
   let current = "dashboard";
   const titles = {
     dashboard: "仪表盘", chart: "行情图表", backtest: "策略回测", custom: "策略构建",
-    monitor: "市场监控", evolution: "策略进化", live: "实盘交易", data: "数据管理", settings: "系统设置",
+    monitor: "市场监控", evolution: "策略进化", rigor: "抗过拟合", portfolio: "组合回测", freqai: "FreqAI 机器学习", live: "实盘交易", data: "数据管理", settings: "系统设置",
   };
 
   function toast(msg, type = "info", ms = 3200) {
@@ -518,3 +518,5 @@ window.App = (() => {
 
   return { pages, register, go, toast, initClock, checkHealth, initAuth, showLogin, hideLogin, autoTips, initTips, professionalize, confirmDialog, isStreaming, communityDialog, get current() { return current; } };
 })();
+
+

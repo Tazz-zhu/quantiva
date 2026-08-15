@@ -36,7 +36,7 @@
     </div>
     <div class="login-err" id="login-err"></div>
     <div class="login-hint" id="login-hint">默认账号 admin / 密码 admin123，登录后请立即在「系统设置」中修改</div>
-    <div class="login-ver">Quantiva Terminal · v1.3</div>
+    <div class="login-ver">Quantiva Terminal · v1.6.0</div>
   </div>
 </div>
 <div id="app">
@@ -52,17 +52,19 @@
       <a class="nav-item active" data-page="dashboard" href="#dashboard" title="仪表盘"><svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9zm0 7h6v-5H4v5zm10 0h6v-9h-6v9zm0-16v5h6V4h-6z"/></svg><span>仪表盘</span></a>
       <a class="nav-item" data-page="chart" href="#chart" title="行情图表"><svg viewBox="0 0 24 24"><path d="M7 3h2v18H7zM5 5h6v4H5zM15 9h2v12h-2zM13 11h6v4h-6z"/></svg><span>行情图表</span></a>
       <a class="nav-item" data-page="backtest" href="#backtest" title="策略回测"><span class="nav-badge" id="nav-backtest-badge" style="display:none"></span><svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.2H22l-6 4.6 2.3 7.2-6.3-4.5-6.3 4.5L8 13.8 2 9.2h7.6z"/></svg><span>策略回测</span></a>
+      <a class="nav-item" data-page="portfolio" href="#portfolio" title="组合回测"><span class="nav-badge" id="nav-portfolio-badge" style="display:none"></span><svg viewBox="0 0 24 24"><path d="M4 6h2v12H4zM10 6h2v12h-2zM16 6h2v12h-2zM2 4h20v2H2zM2 18h20v2H2z"/></svg><span>组合回测</span></a>
       <a class="nav-item" data-page="custom" href="#custom" title="策略构建"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8v5h2V3h-9v2h5l-6 6-4-4-8 8v2zm0 4h18v2H3v-2z"/></svg><span>策略构建</span></a>
       <a class="nav-item" data-page="monitor" href="#monitor" title="市场监控"><span class="nav-badge" id="nav-monitor-badge" style="display:none"></span><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8L4 8.8h6.1z"/></svg><span>市场监控</span></a>
       <a class="nav-item" data-page="evolution" href="#evolution" title="策略进化"><span class="nav-badge" id="nav-evolution-badge" style="display:none"></span><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.9 6.6l-4.5 7.5-2.6-3.9-3.6 5.9-1.6-1 4.6-7.6 2.6 3.9 3.5-5.8z"/></svg><span>策略进化</span></a>
-      <a class="nav-item" data-page="live" href="#live" title="实盘交易"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm4-8l-6-3.5v7z"/></svg><span>实盘交易</span></a>
+            <a class="nav-item" data-page="rigor" href="#rigor" title="抗过拟合"><span class="nav-badge" id="nav-rigor-badge" style="display:none"></span><svg viewBox="0 0 24 24"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5z"/><path d="M8.5 12l2.4 2.4 4.6-4.8" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>抗过拟合</span></a>
+      <a class="nav-item" data-page="freqai" href="#freqai" title="FreqAI 机器学习"><span class="nav-badge" id="nav-freqai-badge" style="display:none"></span><svg viewBox="0 0 24 24"><path d="M9 3v4l-3 3v3l3-3v3l-3 3v3l3-3h6v-3l-3-3V7l-3-3V3z"/></svg><span>FreqAI</span></a><a class="nav-item" data-page="live" href="#live" title="实盘交易"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm4-8l-6-3.5v7z"/></svg><span>实盘交易</span></a>
       <a class="nav-item" data-page="data" href="#data" title="数据管理"><svg viewBox="0 0 24 24"><path d="M20 6H4V4h16v2zm0 7H4V9h16v4zm0 7H4v-4h16v4z"/></svg><span>数据管理</span></a>
       <a class="nav-item" data-page="settings" href="#settings" title="系统设置"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.7 7.7 0 000-2l2-1.5-2-3.5-2.4 1a7.7 7.7 0 00-1.7-1L15 3.4h-4l-.3 2.6a7.7 7.7 0 00-1.7 1l-2.4-1-2 3.5L6.6 11a7.7 7.7 0 000 2l-2 1.5 2 3.5 2.4-1a7.7 7.7 0 001.7 1l.3 2.6h4l.3-2.6a7.7 7.7 0 001.7-1l2.4 1 2-3.5zM13 15.5A3.5 3.5 0 1113 8.5a3.5 3.5 0 010 7z"/></svg><span>系统设置</span></a>
     </nav>
     <div class="sidebar-foot">
       <button class="btn btn-sm btn-block btn-community" id="btn-community" title="加入 Quantiva 用户社群">💬 加入社群</button>
       <div class="status-line"><span class="dot dot-green pulse" id="conn-dot"></span><span id="conn-text">连接中…</span></div>
-      <div class="status-line sub" id="server-info">Quantiva v1.0</div>
+      <div class="status-line sub" id="server-info">Quantiva v1.6.0</div>
     </div>
   </aside>
   <main class="main">
@@ -91,9 +93,12 @@
       <section class="page active" id="page-dashboard"></section>
       <section class="page" id="page-chart"></section>
       <section class="page" id="page-backtest"></section>
+      <section class="page" id="page-portfolio"></section>
       <section class="page" id="page-custom"></section>
       <section class="page" id="page-monitor"></section>
       <section class="page" id="page-evolution"></section>
+            <section class="page" id="page-rigor"></section>
+      <section class="page" id="page-freqai"></section>
       <section class="page" id="page-live"></section>
       <section class="page" id="page-data"></section>
       <section class="page" id="page-settings"></section>
@@ -112,16 +117,22 @@
 <script src="/static/js/lightweight-charts.standalone.production.js?v=20260809a"></script>
 <script src="/static/js/api.js?v=20260809p"></script>
 <script src="/static/js/charts.js?v=20260809p"></script>
-<script src="/static/js/app.js?v=20260809p"></script>
+<script src="/static/js/app.js?v=20260816c"></script>
 <script src="/static/js/pages/dashboard.js?v=20260809p"></script>
 <script src="/static/js/pages/chart.js?v=20260809p"></script>
 <script src="/static/js/pages/backtest.js?v=20260809p"></script>
 <script src="/static/js/pages/custom.js?v=20260809p"></script>
+<script src="/static/js/pages/portfolio.js?v=20260816c"></script>
+<script src="/static/js/pages/rigor.js?v=20260816c"></script>
+<script src="/static/js/pages/freqai.js?v=20260816c"></script>
 <script src="/static/js/pages/monitor.js?v=20260809p"></script>
-<script src="/static/js/pages/evolution.js?v=20260809p"></script>
+<script src="/static/js/pages/evolution.js?v=20260816c"></script>
 <script src="/static/js/pages/live.js?v=20260809p"></script>
 <script src="/static/js/pages/data.js?v=20260809p"></script>
 <script src="/static/js/pages/settings.js?v=20260809p"></script>
-<script src="/static/js/main.js?v=20260809p"></script>
+<script src="/static/js/main.js?v=20260816c"></script>
 </body>
 </html>
+
+
+

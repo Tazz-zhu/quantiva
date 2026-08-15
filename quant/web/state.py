@@ -16,8 +16,10 @@ import pandas as pd
 from quant.analytics.metrics import max_drawdown
 from quant.ai.advisor import AIAdvisor
 from quant.backtest.engine import BacktestEngine
+from quant.backtest.portfolio import PortfolioBacktester
 from quant.web.audit import AuditLogger
 from quant.web.auth import AuthManager
+from quant.web.rigor import RigorManager
 from quant.web.system import SystemService
 from quant.evolution.manager import EvolutionManager
 from quant.monitor.service import MarketMonitor
@@ -227,6 +229,8 @@ class BacktestManager:
             "signals": _downsample(result.data["signal"]),
             "close": _downsample(result.data["close"]),
             "analysis": analysis,
+            "breakdown": result.breakdown,
+            "trade_stats": result.trade_stats,
         }
 
     def _persist(self, job_id: str, payload: dict) -> None:
@@ -353,14 +357,19 @@ class BacktestManager:
         with self._lock:
             jobs = []
             for job in sorted(self.jobs.values(), key=lambda j: j["created_at"], reverse=True):
+                if job.get("kind") == "portfolio":
+                    continue  # 组合回测任务由 list_portfolio_jobs 单独列出
+                s = job["params"].get("strategy")
+                strat = (job.get("result") or {}).get("strategy")
+                if not strat:
+                    strat = s.get("name", "?") if isinstance(s, dict) else str(s or "?")
                 jobs.append(
                     {
                         "id": job["id"],
                         "status": job["status"],
                         "created_at": job["created_at"],
                         "finished_at": job["finished_at"],
-                        "strategy": (job.get("result") or {}).get("strategy")
-                        or (job["params"].get("strategy") or {}).get("name", "?"),
+                        "strategy": strat,
                         "symbol": (job.get("result") or {}).get("symbol")
                         or (job["params"].get("data") or {}).get("symbol", "?"),
                         "timeframe": (job.get("result") or {}).get("timeframe")
@@ -382,6 +391,118 @@ class BacktestManager:
         return True
 
 
+    # ---------------- 多币种组合回测 ----------------
+    def submit_portfolio(self, params: dict) -> str:
+        job_id = uuid.uuid4().hex[:12]
+        job = {
+            "id": job_id,
+            "status": "running",
+            "kind": "portfolio",
+            "created_at": _now_iso(),
+            "finished_at": None,
+            "params": params,
+            "result": None,
+            "error": None,
+        }
+        with self._lock:
+            self.jobs[job_id] = job
+        thread = threading.Thread(target=self._run_portfolio, args=(job_id, params), daemon=True)
+        thread.start()
+        return job_id
+
+    def _run_portfolio(self, job_id: str, params: dict) -> None:
+        try:
+            cfg = load_config(self.config_path)
+            strategy_name = params.get("strategy", "ma_cross")
+            strategy_params = params.get("params") or {}
+            symbols = params.get("symbols") or []
+            if not symbols:
+                raise ValueError("请至少选择一个标的")
+            data_cfg = params.get("data") or cfg["data"]
+            risk_cfg = params.get("risk") or cfg["risk"]
+            bt_cfg = params.get("backtest") or cfg["backtest"]
+            source = data_cfg.get("source", "db")
+            timeframe = data_cfg.get("timeframe", "1h")
+            days = int(data_cfg.get("days", 730))
+            seed = int(data_cfg.get("seed", 42))
+            max_open = int(params.get("max_open_trades", 3))
+            align = str(params.get("align", "inner"))
+
+            strategies = {}
+            data = {}
+            for sym in symbols:
+                d = self._load_data(source, {**data_cfg, "symbol": sym}, sym, timeframe, days, seed)
+                if len(d) < 100:
+                    continue
+                data[sym] = d
+                strategies[sym] = create_strategy(strategy_name, dict(strategy_params))
+            if not data:
+                raise ValueError("所有标的数据不足（<100 根 K 线）")
+
+            risk = RiskManager.from_config(risk_cfg)
+            result = PortfolioBacktester(
+                strategies, data,
+                initial_capital=float(bt_cfg.get("initial_capital", 10000)),
+                fee_rate=float(bt_cfg.get("fee_rate", 0.001)),
+                slippage=float(bt_cfg.get("slippage", 0.0005)),
+                risk=risk,
+                max_open_trades=max_open,
+                funding_rate_8h=float(bt_cfg.get("funding_rate_8h", 0.0)),
+                align=align,
+            ).run()
+
+            payload = {
+                "id": job_id,
+                "strategy": strategy_name,
+                "strategy_params": strategy_params,
+                "symbols": list(data.keys()),
+                "timeframe": timeframe,
+                "metrics": result.metrics,
+                "equity_curve": _downsample(result.equity_curve),
+                "per_symbol": result.per_symbol,
+                "breakdown": result.breakdown,
+                "trade_stats": result.trade_stats,
+                "trades": [
+                    {
+                        "symbol": t.symbol, "side": t.side,
+                        "entry_time": t.entry_time.isoformat(), "entry_price": round(t.entry_price, 6),
+                        "exit_time": t.exit_time.isoformat(), "exit_price": round(t.exit_price, 6),
+                        "quantity": round(t.quantity, 8), "fees": round(t.fees, 4),
+                        "pnl": round(t.pnl, 4), "return_pct": round(t.return_pct, 6),
+                        "reason": t.reason,
+                    }
+                    for t in result.trades
+                ],
+            }
+            with self._lock:
+                self.jobs[job_id].update(status="done", finished_at=_now_iso(), result=payload)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("组合回测 %s 失败", job_id)
+            with self._lock:
+                self.jobs[job_id].update(status="error", finished_at=_now_iso(), error=str(exc)[:300])
+
+    def get_portfolio_job(self, job_id: str) -> dict | None:
+        with self._lock:
+            job = self.jobs.get(job_id)
+            return dict(job) if job and job.get("kind") == "portfolio" else None
+
+    def list_portfolio_jobs(self) -> list[dict]:
+        with self._lock:
+            return [
+                {k: v for k, v in job.items() if k != "result"}
+                for job in sorted(self.jobs.values(), key=lambda j: j["created_at"], reverse=True)
+                if job.get("kind") == "portfolio"
+            ]
+
+    def delete_portfolio_job(self, job_id: str) -> bool:
+        with self._lock:
+            job = self.jobs.get(job_id)
+            if not job or job.get("kind") != "portfolio":
+                return False
+            del self.jobs[job_id]
+        return True
+
+
 class AppState:
     """Web ???????"""
 
@@ -396,6 +517,7 @@ class AppState:
         self.config_path = Path(config_path)
         self.config = load_config(self.config_path)
         self.backtest = BacktestManager(self.config_path)
+        self.rigor = RigorManager(self.config_path)
         self.live = None  # LiveManager ???????????????
         self.advisor = AIAdvisor(self.config)
         self.notifier = FeishuNotifier(self.config)

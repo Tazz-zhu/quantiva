@@ -1,4 +1,4 @@
-﻿"""FastAPI Web 服务：行情、回测、实盘、监控、进化、审计、配置等 API。"""
+"""FastAPI Web 服务：行情、回测、实盘、监控、进化、审计、配置等 API。"""
 from __future__ import annotations
 
 import json
@@ -44,7 +44,7 @@ CONFIG_PATH = ROOT / "config" / "config.yaml"
 
 state = AppState(CONFIG_PATH)
 
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.6.0"
 
 _ticker_cache: dict = {"ts": 0.0, "data": {}}
 _account_cache: dict = {"ts": 0.0, "data": None}
@@ -336,7 +336,7 @@ def _market_summary() -> str:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Crypto Quant Console", version="1.0.0")
+    app = FastAPI(title="Crypto Quant Console", version="1.6.0")
     app.mount("/static", StaticFiles(directory=str(WEBUI_DIR / "static")), name="static")
 
     sys_cfg = state.config.get("system", {})
@@ -699,6 +699,45 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="至少选择一个策略")
         return {"id": state.backtest.submit_compare(body)}
 
+    @app.post("/api/backtest/portfolio")
+    def backtest_portfolio(body: dict):
+        """多币种组合回测（freqtrade 组合回测移植）。"""
+        if not body.get("symbols"):
+            raise HTTPException(status_code=400, detail="请至少选择一个标的")
+        return {"id": state.backtest.submit_portfolio(body)}
+
+    @app.get("/api/backtest/portfolio/jobs")
+    def backtest_portfolio_jobs():
+        return {"jobs": state.backtest.list_portfolio_jobs()}
+
+    @app.get("/api/backtest/portfolio/{job_id}")
+    def backtest_portfolio_result(job_id: str):
+        job = state.backtest.get_portfolio_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="组合回测任务不存在")
+        return job
+
+    @app.delete("/api/backtest/portfolio/{job_id}")
+    def backtest_portfolio_delete(job_id: str):
+        if not state.backtest.delete_portfolio_job(job_id):
+            raise HTTPException(status_code=404, detail="组合回测任务不存在")
+        return {"ok": True}
+
+    @app.post("/api/pairlist/preview")
+    def pairlist_preview(body: dict):
+        """动态选币预览（freqtrade pairlist 移植）。"""
+        from quant.pairlist import PairListManager
+        from quant.config import exchange_proxy
+
+        cfg = load_config(state.config_path)
+        pair_cfg = body.get("config") or cfg.get("pairlist", {}) or {}
+        exchange_id = body.get("exchange", cfg.get("exchange", {}).get("id", "okx"))
+        try:
+            plm = PairListManager(exchange_id=exchange_id, config=pair_cfg, proxy=exchange_proxy(cfg))
+            return plm.preview(refresh=bool(body.get("refresh", False)))
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=400, detail="选币失败: " + str(exc)[:200]) from exc
+
     @app.post("/api/backtest/rerun/{job_id}")
     def backtest_rerun(job_id: str):
         """用历史任务的原始参数重新回测。"""
@@ -772,6 +811,66 @@ def create_app() -> FastAPI:
         doc = generate_html_report(payload, strategy_name=payload.get("strategy", ""), source=payload.get("source", ""), timeframe=payload.get("timeframe", "1h"))
         return Response(content=doc, media_type="text/html; charset=utf-8",
                         headers={"Content-Disposition": 'attachment; filename="backtest_report_' + job_id + '.html"'})
+
+    # ---------------- 抗过拟合（rigor） ----------------
+    @app.post("/api/rigor/walkforward")
+    def rigor_walkforward(body: dict):
+        return {"id": state.rigor.submit_walkforward(body)}
+
+    @app.post("/api/rigor/lookahead")
+    def rigor_lookahead(body: dict):
+        return state.rigor.lookahead(body)
+
+    @app.post("/api/rigor/recursive")
+    def rigor_recursive(body: dict):
+        return state.rigor.recursive(body)
+
+    @app.post("/api/rigor/significance")
+    def rigor_significance(body: dict):
+        return state.rigor.significance(body)
+
+    @app.get("/api/rigor/jobs")
+    def rigor_jobs():
+        return {"jobs": state.rigor.list_jobs()}
+
+    @app.get("/api/rigor/result/{job_id}")
+    def rigor_result(job_id: str):
+        job = state.rigor.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="任务不存在")
+        return job
+
+    @app.delete("/api/rigor/result/{job_id}")
+    def rigor_delete(job_id: str):
+        if not state.rigor.delete_job(job_id):
+            raise HTTPException(status_code=404, detail="任务不存在")
+        return {"ok": True}
+
+    # ---------------- FreqAI ----------------
+    @app.get("/api/freqai/status")
+    def freqai_status():
+        return state.rigor.freqai_status()
+
+    @app.post("/api/freqai/backtest")
+    def freqai_backtest(body: dict):
+        return {"id": state.rigor.submit_freqai_backtest(body)}
+
+    @app.post("/api/freqai/train")
+    def freqai_train(body: dict):
+        return {"id": state.rigor.submit_freqai_train(body)}
+
+    @app.post("/api/freqai/predict")
+    def freqai_predict(body: dict):
+        return state.rigor.freqai_predict(body)
+
+    @app.post("/api/freqai/schedule")
+    def freqai_schedule(body: dict):
+        """FreqAI 定时重训：action = start / stop / train_now / status。"""
+        return state.rigor.freqai_schedule(body)
+
+    @app.get("/api/freqai/retrainer")
+    def freqai_retrainer_status():
+        return state.rigor.freqai_retrainer_status()
 
     # ---------------- AI 建议 ----------------
     @app.get("/api/ai/status")
@@ -1050,3 +1149,4 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+

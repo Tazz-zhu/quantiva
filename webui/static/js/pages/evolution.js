@@ -1,7 +1,7 @@
-﻿/* ============ 策略进化实验室（参数优化 / 迭代日志 / 交易分析） ============ */
+/* ============ 策略进化实验室（参数优化 / 迭代日志 / 交易分析） ============ */
 App.register("evolution", (() => {
   const state = { library: [], strategy: "ma_cross", jobs: [], activeJobId: null, pollTimer: null, lastIterations: [], lastTrades: [] };
-  const TARGETS = [["sharpe", "夏普比率"], ["total_return", "总收益率"], ["annual_return", "年化收益率"], ["win_rate", "胜率"], ["profit_factor", "盈亏比"]];
+  const TARGETS = [["sharpe", "夏普比率"], ["sortino", "索提诺比率"], ["calmar", "卡玛比率"], ["multi_metric", "多指标组合"], ["profit_factor", "盈亏比"], ["total_return", "总收益率"], ["annual_return", "年化收益率"], ["win_rate", "胜率"], ["expectancy", "期望 R"], ["max_drawdown", "最小回撤"]];
   const PRESETS = { quick: { label: "快速", max: 12 }, standard: { label: "标准", max: 40 }, deep: { label: "深度", max: 120 } };
   const KIND_FILTERS = [["all", "全部"], ["optimize", "🧬 参数优化"], ["auto_analysis", "🔬 自动分析"], ["manual", "✍️ 手动"]];
 
@@ -21,6 +21,12 @@ App.register("evolution", (() => {
             <div class="field"><label>策略</label><select class="select" id="ev-strategy"></select></div>
             <div class="field"><label>优化目标</label>
               <select class="select" id="ev-target">${TARGETS.map(([v, l]) => '<option value="' + v + '">' + l + '</option>').join("")}</select>
+            </div>
+            <div class="field"><label>搜索方法</label>
+              <select class="select" id="ev-method">
+                <option value="grid">网格搜索（穷举）</option>
+                <option value="bayesian">贝叶斯搜索（optuna TPE）</option>
+              </select>
             </div>
             <div class="field"><label>数据源</label>
               <select class="select" id="ev-source">
@@ -48,7 +54,10 @@ App.register("evolution", (() => {
               </div>
               <div class="hint">档位自动控制最大组合数（快速 12 / 标准 40 / 深度 120），可手动调整。</div>
             </div>
-            <div class="field"><label>最大组合数</label><input class="input" id="ev-max" type="number" value="12"></div>
+            <div class="input-row-2">
+              <div class="field"><label>最大组合数</label><input class="input" id="ev-max" type="number" value="12"></div>
+              <div class="field"><label>贝叶斯试验数</label><input class="input" id="ev-trials" type="number" value="40"></div>
+            </div>
             <div class="input-row-3">
               <div class="field"><label>样本外验证%</label><input class="input" id="ev-holdout" type="number" step="5" value="25"></div>
               <div class="field"><label>最小交易数</label><input class="input" id="ev-min-trades" type="number" value="5"></div>
@@ -211,6 +220,8 @@ App.register("evolution", (() => {
         trade_direction: "long_only",
       },
       target: document.getElementById("ev-target").value,
+      method: document.getElementById("ev-method").value,
+      n_trials: parseInt(document.getElementById("ev-trials").value) || 40,
       max_combos: parseInt(document.getElementById("ev-max").value) || 40,
       holdout_ratio: parseFloat(document.getElementById("ev-holdout").value) / 100 || 0.25,
       min_trades: parseInt(document.getElementById("ev-min-trades").value) || 0,
@@ -503,3 +514,5 @@ App.register("evolution", (() => {
 
   return { render, refresh() { if (document.getElementById("ev-results")) refresh(); } };
 })());
+
+

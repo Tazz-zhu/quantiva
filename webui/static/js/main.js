@@ -31,11 +31,15 @@
     if (cur === "live" && App.pages.live.refresh && !App.isStreaming("live")) App.pages.live.refresh();
     if (cur === "monitor" && App.pages.monitor.refresh && !App.isStreaming("monitor")) App.pages.monitor.refresh();
     if (cur === "evolution" && App.pages.evolution.refresh) App.pages.evolution.refresh();
+    if (cur === "rigor" && App.pages.rigor.refresh) App.pages.rigor.refresh();
+    if (cur === "portfolio" && App.pages.portfolio.refresh) App.pages.portfolio.refresh();
+    if (cur === "freqai" && App.pages.freqai.refresh) App.pages.freqai.refresh();
   }, 4000);
 
   // ---------- 后台任务全局监控（回测 / 参数优化在后台持续运行） ----------
   const bgBtRunning = new Set();
   const bgEvRunning = new Set();
+  const bgRgRunning = new Set();
   function updateNavBadge(id, count) {
     const b = document.getElementById(id);
     if (!b) return;
@@ -64,6 +68,18 @@
       updateNavBadge("nav-evolution-badge", runningIds.length);
       if (doneIds.length && App.current !== "evolution") {
         notifyUser("参数优化完成", "最优参数组合已写入迭代日志");
+      }
+    } catch (e) { /* 忽略 */ }
+    try {
+      const jobs = (await API.get("/api/rigor/jobs")).jobs || [];
+      const runningIds = jobs.filter((j) => j.status === "running").map((j) => j.id);
+      const doneIds = [...bgRgRunning].filter((id) => !runningIds.includes(id));
+      bgRgRunning.clear();
+      runningIds.forEach((id) => bgRgRunning.add(id));
+      updateNavBadge("nav-rigor-badge", runningIds.length);
+      if (doneIds.length && App.current !== "rigor") {
+        const j = jobs.find((x) => doneIds.includes(x.id));
+        if (j) notifyUser("抗过拟合 / FreqAI 完成", (j.kind || "任务") + " 已完成");
       }
     } catch (e) { /* 忽略 */ }
   }
@@ -216,3 +232,5 @@
     }
   }
 })();
+
+

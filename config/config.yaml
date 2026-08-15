@@ -70,6 +70,45 @@ notify:
   on_trade: true
   on_alert: true
   on_backtest: false
+rigor:
+  # 抗过拟合工具默认参数（freqtrade 方法论）
+  walkforward:
+    n_splits: 4
+    train_ratio: 0.6
+    expanding: false
+    loss: sharpe
+    min_trades: 5
+    max_combos: 60
+  protections:
+    cooldown_candles: 0
+    max_drawdown_pct: null
+    stoploss_guard_count: 0
+    stoploss_guard_window: 48
+    stoploss_guard_pause: 24
+    low_profit_window: 0
+    low_profit_threshold: -0.02
+    low_profit_pause: 24
+pairlist:
+  # 动态选币（freqtrade pairlist 移植）
+  method: static          # static / volume
+  number_assets: 10
+  min_volume: 1000000
+  price_min: 0.1
+  price_max: 100000
+  min_age_days: 0
+  exclude: []
+freqai:
+  # FreqAI 机器学习默认参数
+  model: random_forest
+  kind: regression
+  horizon: 5
+  n_windows: 5
+  min_train: 100
+  train_ratio: 0.8
+  model_dir: data/freqai
+  seed: 42
+  retrain_interval_hours: 6   # 定时重训间隔
+  corr_symbols: []            # 关联对特征标的，如 [ETH/USDT, SOL/USDT]
 evolution:
   db_path: data/evolution.db
   auto_analyze_enabled: true
